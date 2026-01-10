@@ -58,3 +58,32 @@ body {
     mask-position: center;
     mask-size: 50%;
 }
+
+@layer components {
+    main {
+        @apply w-full overflow-x-hidden;
+    }
+
+    nav {
+        @apply fixed z-50 w-full;
+
+        div {
+            @apply flex md:flex-row flex-col md:justify-between items-center gap-5 py-5 lg:px-0 px-5 container mx-auto;
+        }
+
+        p {
+            @apply font-modern-negra text-3xl -mb-2;
+        }
+
+        a {
+            @apply cursor-pointer text-nowrap md:text-base text-sm;
+        }
+
+        ul {
+            @apply flex-center lg:gap-12 gap-7;
+        }
+    }
+
+    .noisy {
+        @apply absolute inset-0 size-full bg-[url("/images/noise.png")];
+    }
