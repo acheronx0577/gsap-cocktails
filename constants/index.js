@@ -116,6 +116,24 @@ const openingHours = [
  { day: "Sun", time: "9:00am – 1am" },
 ];
 
+const socials = [
+ {
+	name: "Instagram",
+	icon: "/images/insta.png",
+	url: "#",
+ },
+ {
+	name: "X (Twitter)",
+	icon: "/images/x.png",
+	url: "#",
+ },
+ {
+	name: "Facebook",
+	icon: "/images/fb.png",
+	url: "#",
+ },
+];
+
 export {
  navLinks,
  cocktailLists,
@@ -125,4 +143,5 @@ export {
  goodLists,
  storeInfo,
  openingHours,
+ socials,
 };
