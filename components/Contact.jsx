@@ -3,7 +3,7 @@
 import { useGSAP } from "@gsap/react";
 import { SplitText } from "gsap/all";
 import gsap from "gsap";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { barAddress, barEmail, barPhone, openingHours, socials } from "@/constants";
 
@@ -15,10 +15,24 @@ const initialForm = {
   message: "",
 };
 
+const honeypotStyle = {
+  position: "absolute",
+  left: "-9999px",
+  width: "1px",
+  height: "1px",
+  overflow: "hidden",
+};
+
 const Contact = () => {
   const [form, setForm] = useState(initialForm);
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+  const formLoadedAtRef = useRef(0);
+
+  useEffect(() => {
+    formLoadedAtRef.current = Date.now();
+  }, []);
 
   useGSAP(() => {
     const titleSplit = SplitText.create("#contact h2", { type: "words" });
@@ -68,12 +82,14 @@ const Contact = () => {
     if (status === "error" || status === "success") {
       setStatus("idle");
       setError("");
+      setSuccessMessage("");
     }
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
+    setSuccessMessage("");
 
     if (!form.name.trim() || !form.email.trim() || !form.message.trim()) {
       setStatus("error");
@@ -89,10 +105,47 @@ const Contact = () => {
 
     setStatus("submitting");
 
-    await new Promise((resolve) => window.setTimeout(resolve, 1200));
+    if (!formLoadedAtRef.current) {
+      setStatus("error");
+      setError("Please wait a moment and try again.");
+      return;
+    }
 
-    setStatus("success");
-    setForm(initialForm);
+    const formData = new FormData(event.currentTarget);
+    formData.set("Name", form.name);
+    formData.set("Email", form.email);
+    formData.set("Message", form.message);
+    formData.set("_ax_form_ts", String(formLoadedAtRef.current));
+
+    try {
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok || data.ok === false) {
+        setStatus("error");
+        setError(
+          typeof data.error === "string"
+            ? data.error
+            : "Could not send your message. Try again later."
+        );
+        return;
+      }
+
+      setStatus("success");
+      setSuccessMessage(
+        typeof data.message === "string"
+          ? data.message
+          : `Message sent. ${CONTACT_USER} will reply when they can.`
+      );
+      setForm(initialForm);
+      formLoadedAtRef.current = Date.now();
+    } catch {
+      setStatus("error");
+      setError("Could not send your message. Try again later.");
+    }
   };
 
   return (
@@ -171,6 +224,16 @@ const Contact = () => {
             </div>
 
             <div className="contact-form-fields">
+              <label aria-hidden="true" style={honeypotStyle}>
+                Company
+                <input
+                  type="text"
+                  name="_gotcha"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  disabled={status === "submitting"}
+                />
+              </label>
               <label className="contact-field">
                 <span>Name</span>
                 <input
@@ -225,7 +288,7 @@ const Contact = () => {
                 role="status"
                 aria-live="polite"
               >
-                Message sent. {CONTACT_USER} will reply when they can.
+                {successMessage}
               </p>
             ) : null}
 

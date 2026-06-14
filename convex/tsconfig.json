@@ -11,6 +11,7 @@
     "jsx": "react-jsx",
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,
+    "allowImportingTsExtensions": true,
 
     /* These compiler options are required by Convex */
     "target": "ESNext",
@@ -18,8 +19,9 @@
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
     "isolatedModules": true,
-    "noEmit": true
+    "noEmit": true,
+    "types": ["node"]
   },
   "include": ["./**/*"],
-  "exclude": ["./_generated"]
+  "exclude": ["./_generated", "**/*.test.ts"]
 }

@@ -8,13 +8,37 @@
  * @module
  */
 
+import type * as contact from "../contact.js";
+import type * as http from "../http.js";
+import type * as lib_bearerAuth from "../lib/bearerAuth.js";
+import type * as lib_emailSanitize from "../lib/emailSanitize.js";
+import type * as lib_html from "../lib/html.js";
+import type * as lib_ipHash from "../lib/ipHash.js";
+import type * as lib_ipHintAuth from "../lib/ipHintAuth.js";
+import type * as lib_isIpAddress from "../lib/isIpAddress.js";
+import type * as lib_rateLimit from "../lib/rateLimit.js";
+import type * as lib_resend from "../lib/resend.js";
+import type * as lib_validation from "../lib/validation.js";
+
 import type {
   ApiFromModules,
   FilterApi,
   FunctionReference,
 } from "convex/server";
 
-declare const fullApi: ApiFromModules<{}>;
+declare const fullApi: ApiFromModules<{
+  contact: typeof contact;
+  http: typeof http;
+  "lib/bearerAuth": typeof lib_bearerAuth;
+  "lib/emailSanitize": typeof lib_emailSanitize;
+  "lib/html": typeof lib_html;
+  "lib/ipHash": typeof lib_ipHash;
+  "lib/ipHintAuth": typeof lib_ipHintAuth;
+  "lib/isIpAddress": typeof lib_isIpAddress;
+  "lib/rateLimit": typeof lib_rateLimit;
+  "lib/resend": typeof lib_resend;
+  "lib/validation": typeof lib_validation;
+}>;
 
 /**
  * A utility for referencing Convex functions in your app's public API.

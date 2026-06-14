@@ -1,0 +1,81 @@
+import { httpRouter } from "convex/server";
+import { httpAction, type ActionCtx } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { isAuthorized } from "./lib/bearerAuth";
+import { hashIp } from "./lib/ipHash";
+import { verifySignedIpHint } from "./lib/ipHintAuth";
+import { RATE_LIMIT_MESSAGE } from "./lib/rateLimit";
+import { validateContactPayload } from "./lib/validation";
+
+const http = httpRouter();
+
+function jsonResponse(body: unknown, status: number) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+async function readContactBody(request: Request) {
+  try {
+    return (await request.json()) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+async function submitContact(ctx: ActionCtx, body: Record<string, unknown>) {
+  const parsed = validateContactPayload({
+    name: body.name,
+    email: body.email,
+    message: body.message,
+  });
+  if (parsed.ok === false) {
+    return jsonResponse(parsed, 400);
+  }
+
+  const ipHint = await verifySignedIpHint(body.ipHint, body.ipHintSignature);
+  if (!ipHint) {
+    return jsonResponse({ ok: false, error: "Invalid client identity." }, 400);
+  }
+
+  const ipHash = await hashIp(ipHint);
+  const rate = await ctx.runMutation(internal.contact.prepareIngress, { ipHash });
+  if (rate.limited) {
+    return jsonResponse(
+      { ok: false, rateLimited: true, error: RATE_LIMIT_MESSAGE },
+      429,
+    );
+  }
+
+  const id = await ctx.runMutation(internal.contact.insertSubmission, {
+    ...parsed.data,
+    ipHash,
+  });
+
+  await ctx.scheduler.runAfter(0, internal.contact.sendContactEmail, {
+    submissionId: id,
+    ...parsed.data,
+  });
+
+  return jsonResponse({ ok: true, id }, 200);
+}
+
+http.route({
+  path: "/contact",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    if (!isAuthorized(request)) {
+      return jsonResponse({ ok: false, error: "Unauthorized" }, 401);
+    }
+
+    const body = await readContactBody(request);
+    if (!body) {
+      return jsonResponse({ ok: false, error: "Invalid JSON body." }, 400);
+    }
+
+    return submitContact(ctx, body);
+  }),
+});
+
+export default http;

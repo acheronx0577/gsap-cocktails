@@ -16,6 +16,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "test": "node --experimental-strip-types --test \"lib/contact/*.test.ts\" \"convex/lib/*.test.ts\"",
     "review:fallow": "npm run review:fallow:dead-code",
     "review:fallow:dead-code": "fallow dead-code --fail-on-issues",
     "review:fallow:security": "node scripts/review-fallow-security.cjs"
