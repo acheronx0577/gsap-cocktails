@@ -1,19 +1,28 @@
-@import url("https://fonts.googleapis.com/css2?family=DM+Serif+Text:ital@0;1&family=Mona+Sans:ital,wght@0,200..900;1,200..900&display=swap");
-
 @import "tailwindcss";
 @import "lenis/dist/lenis.css";
 
 @font-face {
-    font-family: "Modern Negra";
-    src: url("/fonts/Modern Negra Demo.ttf") format("truetype");
+    font-family: "Sharpie";
+    src: url("/fonts/Sharpie-Extrabold.woff2") format("woff2");
+    font-display: swap;
+    font-style: normal;
+    font-weight: 800;
+}
+
+@font-face {
+    font-family: "Ranade";
+    src: url("/fonts/Ranade-Light.woff2") format("woff2");
+    font-display: swap;
+    font-style: normal;
+    font-weight: 300;
 }
 
 @theme {
     --color-yellow: #e7d393;
     --color-white-100: #efefef;
-    --font-sans: "Mona Sans", sans-serif;
-    --font-modern-negra: "Modern Negra", sans-serif;
-    --font-serif: "DM Serif Text", serif;
+    --font-sans: "Ranade", sans-serif;
+    --font-modern-negra: "Sharpie", sans-serif;
+    --font-serif: "Ranade", sans-serif;
 }
 
 html,
@@ -22,6 +31,19 @@ body {
     background-color: black;
     color: white;
     overflow-x: hidden;
+    font-family: var(--font-sans);
+    text-rendering: geometricPrecision;
+    -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+    background: rgb(231 211 147 / 0.28);
+    color: white;
+}
+
+:focus-visible {
+    outline: 2px solid rgb(231 211 147 / 0.75);
+    outline-offset: 4px;
 }
 
 html {
@@ -313,8 +335,12 @@ html::-webkit-scrollbar {
     #hero {
         @apply relative z-10 min-h-dvh w-full border border-transparent;
 
+        .hero-eyebrow {
+            @apply absolute left-1/2 top-28 z-10 -translate-x-1/2 text-center text-[0.68rem] uppercase tracking-[0.32em] text-yellow/75 md:top-32 md:text-xs;
+        }
+
         h1 {
-            @apply md:mt-32 mt-40 text-8xl md:text-[20vw] leading-none text-center font-modern-negra;
+            @apply md:mt-32 mt-44 text-[5.5rem] sm:text-8xl md:text-[18vw] leading-none text-center font-modern-negra;
         }
 
         .left-leaf {
@@ -326,13 +352,13 @@ html::-webkit-scrollbar {
         }
 
         .body {
-            @apply container mx-auto absolute left-1/2 -translate-x-1/2 lg:bottom-20 top-auto md:top-[30vh] flex justify-between items-end px-5;
+            @apply container mx-auto absolute left-1/2 w-full -translate-x-1/2 lg:bottom-20 top-auto md:top-[30vh] flex justify-between items-end px-5;
 
             .content {
-                @apply flex lg:flex-row flex-col w-full gap-10 justify-between items-center lg:items-end mx-auto;
+                @apply flex lg:flex-row flex-col w-full min-w-0 gap-10 justify-between items-center lg:items-end mx-auto;
 
                 p:nth-of-type(2) {
-                    @apply font-modern-negra text-6xl text-yellow max-w-xl;
+                    @apply font-modern-negra text-6xl text-yellow max-w-xl leading-[0.95];
                 }
 
                 p:last-of-type {
@@ -340,17 +366,41 @@ html::-webkit-scrollbar {
                 }
 
                 .view-cocktails {
-                    @apply space-y-5 text-lg lg:max-w-2xs md:max-w-xs w-full;
+                    @apply w-full max-w-80 space-y-5 text-base md:max-w-xs md:text-lg lg:max-w-2xs;
+
+                    max-width: min(20rem, calc(100vw - 4rem));
 
                     p {
-                        @apply text-left;
+                        @apply text-left wrap-break-word;
+                    }
+
+                    .hero-actions {
+                        @apply flex flex-col gap-3 sm:flex-row lg:flex-col xl:flex-row;
                     }
 
                     a {
-                        @apply font-semibold opacity-80 2xl:text-start text-center hover:text-yellow;
+                        @apply inline-flex min-h-11 items-center justify-center rounded-lg border border-white/12 px-4 py-3 text-center text-xs uppercase tracking-[0.2em] text-white/80 transition-[border-color,background-color,color,transform] duration-300 hover:border-yellow/45 hover:bg-yellow/10 hover:text-yellow active:scale-[0.99] 2xl:justify-start;
+                    }
+
+                    a:first-child {
+                        @apply border-yellow/35 bg-yellow/12 text-yellow;
+                    }
+                }
+
+                @media (min-width: 768px) {
+                    .view-cocktails {
+                        max-width: 20rem;
                     }
                 }
             }
+        }
+    }
+
+    .hero-proof {
+        @apply grid max-w-lg grid-cols-3 gap-2 pt-3;
+
+        span {
+            @apply border-t border-white/12 pt-3 text-xs uppercase tracking-[0.18em] text-white/55;
         }
     }
 
@@ -373,33 +423,33 @@ html::-webkit-scrollbar {
             @apply container mx-auto relative z-10 flex md:flex-row flex-col justify-between items-start gap-20 pt-40 2xl:px-0 px-5;
 
             .popular {
-                @apply space-y-8 w-full md:w-fit;
+                @apply w-full space-y-6 rounded-lg border border-white/10 bg-white/5 p-5 backdrop-blur-sm md:w-fit md:min-w-96 md:p-7;
             }
 
             .loved {
-                @apply space-y-8 w-full md:w-fit pb-20 md:pb-0;
+                @apply w-full space-y-6 rounded-lg border border-white/10 bg-white/5 p-5 pb-8 backdrop-blur-sm md:w-fit md:min-w-96 md:p-7;
             }
 
             h2 {
-                @apply text-xl font-medium;
+                @apply text-sm uppercase tracking-[0.22em] text-white/60;
             }
 
             ul {
-                @apply space-y-8;
+                @apply space-y-5;
 
                 li {
-                    @apply flex justify-between items-start;
+                    @apply flex justify-between gap-6 border-b border-white/8 pb-5 last:border-b-0 last:pb-0;
 
                     h3 {
-                        @apply font-modern-negra 2xl:text-3xl text-xl text-yellow;
+                        @apply font-modern-negra 2xl:text-3xl text-2xl leading-none text-yellow;
                     }
 
                     p {
-                        @apply text-sm;
+                        @apply mt-1 text-sm uppercase tracking-[0.12em] text-white/45;
                     }
 
                     span {
-                        @apply text-xl font-medium;
+                        @apply inline-flex size-14 shrink-0 items-center justify-center rounded-full border border-yellow/20 text-center text-sm text-yellow/90 tabular-nums md:size-15;
                     }
                 }
             }
@@ -511,24 +561,37 @@ html::-webkit-scrollbar {
         }
 
         .cocktail-tabs {
-            @apply grid md:grid-cols-4 grid-cols-2 md:gap-20 gap-10 sm:mb-32 mb-20 relative z-10 md:max-w-6xl md:mx-auto pt-2 md:pt-4;
+            @apply grid md:grid-cols-4 grid-cols-2 md:gap-5 gap-3 sm:mb-32 mb-20 relative z-10 md:max-w-6xl md:mx-auto pt-2 md:pt-4;
 
             button {
-                @apply md:text-3xl text-xl pb-2 cursor-pointer hover:text-yellow hover:border-yellow border-b transition-colors font-modern-negra;
+                @apply min-h-16 rounded-lg border border-white/10 bg-white/4 px-3 py-3 text-center font-modern-negra text-lg leading-none transition-[border-color,background-color,color,transform] duration-300 hover:border-yellow/40 hover:bg-yellow/8 hover:text-yellow active:scale-[0.99] md:min-h-20 md:text-2xl;
             }
         }
 
         .content {
             @apply flex flex-col justify-between items-center container mx-auto relative;
 
+            .menu-overline {
+                @apply mb-6 inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs uppercase tracking-[0.22em] text-white/55;
+
+                span:first-child,
+                span:last-child {
+                    @apply text-yellow;
+                }
+            }
+
             .arrows {
-                @apply flex items-center justify-between w-full absolute;
+                @apply pointer-events-none flex items-center justify-between w-full absolute top-1/2 z-20 -translate-y-1/2;
 
                 button {
-                    @apply text-white hover:text-yellow cursor-pointer transition-colors md:max-w-52;
+                    @apply pointer-events-auto rounded-lg border border-white/10 bg-black/35 p-3 text-white backdrop-blur-sm transition-[border-color,background-color,color,transform] duration-300 hover:border-yellow/35 hover:bg-yellow/8 hover:text-yellow active:scale-[0.98] md:max-w-52 md:p-4;
 
                     span {
-                        @apply text-3xl font-modern-negra leading-none hidden md:block;
+                        @apply hidden text-2xl font-modern-negra leading-none md:block;
+                    }
+
+                    img {
+                        @apply mt-0 size-8 object-contain opacity-80 md:mt-3 md:size-auto;
                     }
                 }
             }
@@ -575,11 +638,11 @@ html::-webkit-scrollbar {
                 @apply space-y-4 lg:translate-y-20;
 
                 p {
-                    @apply text-white/80;
+                    @apply text-white/70;
                 }
 
                 .cocktail-name {
-                    @apply font-modern-negra md:text-6xl text-3xl text-yellow max-w-none leading-[0.95];
+                    @apply font-modern-negra md:text-6xl text-4xl text-yellow max-w-none leading-[0.95];
                 }
             }
 
@@ -692,18 +755,22 @@ html::-webkit-scrollbar {
             @apply space-y-2;
 
             h3 {
-                @apply mb-0 text-left normal-case tracking-wide text-white;
+                @apply mb-0 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-left normal-case tracking-wide text-white;
 
-                font-size: clamp(2rem, 4.4vw, 3.5rem);
+                font-size: clamp(1.85rem, 3.2vw, 3rem);
                 line-height: 0.95;
             }
 
             .contact-form-title {
-                @apply font-modern-negra;
+                @apply shrink-0 font-modern-negra;
             }
 
             .contact-user-name {
-                @apply wrap-break-word font-sans tabular-nums;
+                @apply min-w-0 font-sans tabular-nums;
+
+                font-size: clamp(1.75rem, 3vw, 2.8rem);
+                overflow-wrap: normal;
+                word-break: normal;
             }
 
             .form-hint {

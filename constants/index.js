@@ -21,14 +21,14 @@ const cocktailLists = [
  {
 	name: "Chapel Hill Shiraz",
 	country: "AU",
-	detail: "Battle",
-	price: "$10",
+	detail: "Bottle",
+	price: "$48",
  },
  {
-	name: "Caten Malbee",
+	name: "Catena Malbec",
 	country: "AU",
-	detail: "Battle",
-	price: "$49",
+	detail: "Bottle",
+	price: "$52",
  },
  {
 	name: "Rhino Pale Ale",
@@ -48,26 +48,26 @@ const mockTailLists = [
  {
 	name: "Tropical Bloom",
 	country: "US",
-	detail: "Battle",
-	price: "$10",
+	detail: "Glass",
+	price: "$12",
  },
  {
 	name: "Passionfruit Mint",
 	country: "US",
-	detail: "Battle",
-	price: "$49",
+	detail: "Glass",
+	price: "$14",
  },
  {
 	name: "Citrus Glow",
 	country: "CA",
-	detail: "750 ml",
-	price: "$20",
+	detail: "Glass",
+	price: "$13",
  },
  {
 	name: "Lavender Fizz",
 	country: "IE",
-	detail: "600 ml",
-	price: "$29",
+	detail: "Glass",
+	price: "$15",
  },
 ];
 
@@ -119,25 +119,25 @@ const allCocktails = [
 	id: 1,
 	name: "Classic Mojito",
 	image: "/images/drink1.png",
-	title: "Simple Ingredients, Bold Flavor",
+	title: "Mint, Lime, and a Clean Finish",
 	description:
-	 "Made with tequila, lime juice, and orange liqueur, the Margarita is easy to make and full of character. Add a salted rim for the perfect drink on summer nights.",
+	 "White rum, pressed lime, fresh mint, and a bright soda lift make this the house classic: crisp, aromatic, and built for slow summer nights.",
  },
  {
 	id: 2,
 	name: "Raspberry Mojito",
 	image: "/images/drink2.png",
-	title: "A Zesty Classic That Never Fails",
+	title: "Berry Bright, Still Refreshing",
 	description:
-	 "The Margarita is a classic that balances tangy lime, smooth tequila, and a touch of sweetness. Shaken, frozen, or on the rocks—it’s always crisp & refreshing.",
+	 "Raspberries are muddled with mint and lime for a juicy, jewel-toned pour that keeps the mojito's sparkle while adding a soft berry edge.",
  },
  {
 	id: 3,
 	name: "Violet Breeze",
 	image: "/images/drink3.png",
-	title: "Simple Ingredients, Bold Flavor",
+	title: "Floral, Cool, and Silky",
 	description:
-	 "Made with tequila, lime juice, and orange liqueur, the Margarita is easy to make and full of character. Add a salted rim for the perfect drink on summer nights.",
+	 "A layered blend of citrus, violet, mint, and crushed ice creates a smooth, floral cocktail with a clean finish and a striking color.",
  },
  {
 	id: 4,
@@ -145,7 +145,7 @@ const allCocktails = [
 	image: "/images/drink4.png",
 	title: "Crafted With Care, Poured With Love",
 	description:
-	 "Each cocktail is made with fresh ingredients and a passion for perfecting every pour, whether you're celebrating or simply relaxing.",
+	 "Blue curacao, lime, mint, and rum come together for a tropical mojito with a citrus-forward profile and a luminous seaside hue.",
  },
 ];
 

@@ -100,6 +100,7 @@ const Hero = () => {
   return (
     <div ref={heroRef}>
       <section id="hero" className="noisy">
+        <p className="hero-eyebrow">Velvet Pour / Signature Mojito</p>
         <h1 className="title">MOJITO</h1>
 
         <img
@@ -120,6 +121,11 @@ const Hero = () => {
               <p className="subtitle">
                 Sip the Spirit <br /> of Summer
               </p>
+              <div className="hero-proof">
+                <span>Fresh mint</span>
+                <span>Small batch rum</span>
+                <span>Pressed citrus</span>
+              </div>
             </div>
 
             <div className="view-cocktails">
@@ -128,7 +134,10 @@ const Hero = () => {
                 creative flair, and timeless recipes — designed to delight your
                 senses.
               </p>
-              <a href="#cocktails">View cocktails</a>
+              <div className="hero-actions">
+                <a href="#cocktails">View cocktails</a>
+                <a href="#contact">Book a table</a>
+              </div>
             </div>
           </div>
         </div>

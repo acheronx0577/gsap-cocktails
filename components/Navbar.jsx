@@ -354,7 +354,7 @@ const Navbar = () => {
                               {link.id === "cocktails" && "Seasonal pours"}
                               {link.id === "about" && "Our story"}
                               {link.id === "art" && "Glass & garnish"}
-                              {link.id === "contact" && "Message AcheronX0577"}
+                              {link.id === "contact" && "Book or inquire"}
                             </span>
                           </span>
                           <span className="nav-mobile-link-arrow" aria-hidden="true">

@@ -224,9 +224,17 @@ const Menu = () => {
       </nav>
 
       <div className="content">
+        <div className="menu-overline">
+          <span>{String(displayIndex + 1).padStart(2, "0")}</span>
+          <span>of</span>
+          <span>{String(totalCocktails).padStart(2, "0")}</span>
+        </div>
+
         <div className="arrows">
           <button
+            type="button"
             className="text-left"
+            aria-label={`Previous cocktail: ${prevCocktail.name}`}
             onClick={() => goToSlide(displayIndex - 1)}
           >
             <span>{prevCocktail.name}</span>
@@ -238,7 +246,9 @@ const Menu = () => {
           </button>
 
           <button
+            type="button"
             className="text-left"
+            aria-label={`Next cocktail: ${nextCocktail.name}`}
             onClick={() => goToSlide(displayIndex + 1)}
           >
             <span>{nextCocktail.name}</span>

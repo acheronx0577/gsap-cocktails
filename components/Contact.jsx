@@ -234,7 +234,7 @@ const Contact = () => {
               className="contact-form-submit"
               disabled={status === "submitting"}
             >
-              {status === "submitting" ? "Sending..." : `Send to ${CONTACT_USER}`}
+              {status === "submitting" ? "Sending..." : "Send request"}
             </button>
           </form>
         </div>
