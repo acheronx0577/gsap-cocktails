@@ -74,22 +74,108 @@ html::-webkit-scrollbar {
     }
 
     nav {
-        @apply fixed z-50 w-full;
+        @apply fixed z-50 w-full overflow-x-clip border-b border-transparent transition-[border-color] duration-300;
 
-        div {
-            @apply flex md:flex-row flex-col md:justify-between items-center gap-5 py-5 lg:px-0 px-5 container mx-auto;
+        .nav-shell {
+            @apply flex min-w-0 items-center justify-between gap-4 py-4 lg:px-0 px-5 container mx-auto lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-center lg:gap-6;
         }
 
-        p {
-            @apply font-modern-negra text-3xl -mb-2;
+        .nav-brand {
+            @apply flex min-w-0 items-center gap-3 shrink-0 lg:justify-self-start;
+
+            img {
+                @apply size-11 object-contain;
+            }
+        }
+
+        .nav-brand-copy {
+            @apply flex flex-col leading-none;
+        }
+
+        .nav-brand-name {
+            @apply font-modern-negra text-2xl tracking-wide xl:text-3xl;
+        }
+
+        .nav-brand-tag {
+            @apply mt-1 hidden text-[0.65rem] uppercase tracking-[0.28em] text-white/45 font-sans xl:block;
+        }
+
+        .nav-links {
+            @apply hidden lg:flex lg:justify-self-center items-center gap-0.5 rounded-full border border-white/10 bg-white/3 px-1.5 py-1 backdrop-blur-sm shrink-0;
+        }
+
+        .nav-link-item a,
+        .nav-cta {
+            @apply relative inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-sm transition-colors duration-300 xl:gap-2 xl:px-4;
+        }
+
+        .nav-links a {
+            @apply text-white/75 hover:text-yellow;
+
+            &::after {
+                @apply absolute bottom-1 left-4 right-4 h-px origin-left scale-x-0 bg-yellow transition-transform duration-300 content-[''];
+            }
+
+            &:hover::after,
+            &:focus-visible::after {
+                @apply scale-x-100;
+            }
+        }
+
+        .nav-index {
+            @apply font-serif text-[0.7rem] text-yellow/80 tabular-nums;
+        }
+
+        .nav-label {
+            @apply whitespace-nowrap uppercase tracking-[0.12em] text-[0.68rem] font-sans xl:tracking-[0.16em] xl:text-[0.72rem];
+        }
+
+        .nav-cta {
+            @apply hidden lg:inline-flex lg:justify-self-end shrink-0 border border-yellow/35 bg-yellow/6 px-4 py-2.5 uppercase tracking-[0.18em] text-[0.65rem] text-yellow hover:bg-yellow hover:text-black xl:px-5 xl:tracking-[0.22em] xl:text-[0.68rem];
+        }
+
+        .nav-toggle {
+            @apply relative ml-auto flex size-11 shrink-0 flex-col items-center justify-center gap-1.5 rounded-full border border-white/15 bg-white/4 lg:hidden;
+
+            span {
+                @apply block h-px w-5 bg-white transition-transform duration-300;
+            }
+        }
+
+        &.nav-open .nav-toggle span:nth-child(1) {
+            @apply translate-y-[7px] rotate-45;
+        }
+
+        &.nav-open .nav-toggle span:nth-child(2) {
+            @apply opacity-0;
+        }
+
+        &.nav-open .nav-toggle span:nth-child(3) {
+            @apply translate-y-[-7px] -rotate-45;
+        }
+
+        .nav-mobile-panel {
+            @apply lg:hidden border-t border-white/10 bg-black/90 px-5 py-8 backdrop-blur-xl;
+
+            &[hidden] {
+                @apply hidden;
+            }
+        }
+
+        .nav-mobile-links {
+            @apply flex flex-col gap-2;
+
+            a {
+                @apply flex items-center gap-4 rounded-2xl border border-transparent px-4 py-4 text-white/80 transition-colors hover:border-yellow/20 hover:bg-white/4 hover:text-yellow;
+            }
+        }
+
+        .nav-mobile-cta {
+            @apply mt-6 flex w-full items-center justify-center rounded-full border border-yellow/35 bg-yellow/6 px-5 py-3 uppercase tracking-[0.22em] text-[0.68rem] text-yellow hover:bg-yellow hover:text-black transition-colors duration-300;
         }
 
         a {
-            @apply cursor-pointer text-nowrap md:text-base text-sm;
-        }
-
-        ul {
-            @apply flex-center lg:gap-12 gap-7;
+            @apply cursor-pointer;
         }
     }
 

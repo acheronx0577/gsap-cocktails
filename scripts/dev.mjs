@@ -203,6 +203,10 @@ function collapseCarriageReturns(text) {
     .join("\n");
 }
 
+function normalizeStreamPlain(plain) {
+  return stripAnsi(plain).replace(/\r/g, "").trim();
+}
+
 function stripConvexLead(text) {
   return stripAnsi(text).replace(/^▌\s*/, "").trim();
 }
@@ -212,6 +216,103 @@ function normalizeConvexPlain(plain) {
     .replace(CONVEX_NAV_HINT_RE, "")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function parseConvexBootLinkLine(normalized) {
+  const cloudMatch = normalized.match(
+    /\bcloud\s+(https:\/\/\S+\.convex\.cloud\/?)/i,
+  );
+  if (cloudMatch) {
+    return { label: "cloud", url: cloudMatch[1], complete: true };
+  }
+
+  const partialCloud = normalized.match(/\bcloud\s+(https:\/\/\S*)/i);
+  if (partialCloud && !/\.convex\.cloud/.test(partialCloud[1])) {
+    return { label: "cloud", url: partialCloud[1], complete: false };
+  }
+
+  const dashMatch = normalized.match(
+    /\bdashboard\s+(https:\/\/dashboard\.convex\.dev\/\S+)/i,
+  );
+  if (dashMatch) {
+    return { label: "dashboard", url: dashMatch[1], complete: true };
+  }
+
+  const partialDash = normalized.match(/\bdashboard\s+(https:\/\/\S*)/i);
+  if (partialDash && !partialDash[1].includes("dashboard.convex.dev")) {
+    return { label: "dashboard", url: partialDash[1], complete: false };
+  }
+
+  return null;
+}
+
+function rememberConvexBootKey(key) {
+  if (emittedConvexBootKeys.has(key)) {
+    return false;
+  }
+  emittedConvexBootKeys.add(key);
+  return true;
+}
+
+function rememberNextBootKey(key) {
+  if (emittedNextBootKeys.has(key)) {
+    return false;
+  }
+  emittedNextBootKeys.add(key);
+  return true;
+}
+
+function isCompleteBootUrl(url) {
+  if (!/^https?:\/\//.test(url)) {
+    return false;
+  }
+  if (/localhost:\d+/.test(url)) {
+    return true;
+  }
+  return /^\d+\.\d+\.\d+\.\d+:\d+/.test(url.replace(/^https?:\/\//, ""));
+}
+
+function parseNextBootLine(plain) {
+  const normalized = normalizeStreamPlain(plain).replace(/\s+/g, " ").trim();
+  const local = normalized.match(/^- Local:\s+(\S+)/i);
+  if (local) {
+    return {
+      kind: "local",
+      value: local[1],
+      complete: isCompleteBootUrl(local[1]),
+    };
+  }
+  const network = normalized.match(/^- Network:\s+(\S+)/i);
+  if (network) {
+    return {
+      kind: "network",
+      value: network[1],
+      complete: isCompleteBootUrl(network[1]),
+    };
+  }
+  const env = normalized.match(/^- Environments:\s+(.+)$/i);
+  if (env) {
+    return { kind: "env", value: env[1].trim(), complete: true };
+  }
+  const ready = normalized.match(/^✓ Ready in (.+)$/i);
+  if (ready) {
+    return { kind: "ready", value: ready[1], complete: true };
+  }
+  const version = normalized.match(/^▲ Next\.js (.+)$/i);
+  if (version) {
+    return { kind: "version", value: version[1], complete: true };
+  }
+  return null;
+}
+
+function formatNextBootLink(kind, value) {
+  if (!rememberNextBootKey(`${kind}:${value}`)) {
+    return null;
+  }
+  if (kind === "env") {
+    return nextRow(labeledLink("env", value));
+  }
+  return nextRow(labeledLink(kind, UNDERLINE(value)));
 }
 
 function parseConvexCompletedPrompt(plain) {
@@ -352,6 +453,9 @@ function formatConvexFilesystemWarning(plain) {
 }
 
 function formatConvexDeploymentModern(team, slug) {
+  if (!rememberConvexBootKey(`dev:${team}:${slug}`)) {
+    return [];
+  }
   convexDevRowEmitted = true;
   flushConvexBootLinksAfterEmit = true;
 
@@ -363,6 +467,9 @@ function formatConvexDeploymentModern(team, slug) {
 }
 
 function formatConvexDeploymentShort(project, ref, dashUrl) {
+  if (!rememberConvexBootKey(`dev:${project}:${ref}`)) {
+    return [];
+  }
   if (dashUrl) {
     pendingConvexDashboardUrl = dashUrl;
   }
@@ -377,7 +484,10 @@ function formatConvexDeploymentShort(project, ref, dashUrl) {
 }
 
 function formatConvexSimpleLink(label, url) {
-  return convexRow(arrowLink(label, UNDERLINE(url)));
+  if (!rememberConvexBootKey(`${label}:${url}`)) {
+    return [];
+  }
+  return convexRow(labeledLink(label, UNDERLINE(url)));
 }
 
 function labelCell(label) {
@@ -567,6 +677,14 @@ function isNextErrorHead(plain) {
 function isNextErrorDetail(plain) {
   return /^(Module not found:|Error:|Syntax error:|Type error:|Caused by:|Import trace for requested module:)/i.test(
     plain,
+  );
+}
+
+function isNextErrorContinuation(plain) {
+  const trimmed = normalizeStreamPlain(plain);
+  return (
+    /^-\s+(Local|Network|PID|Dir|Log):/i.test(trimmed) ||
+    /^Run taskkill/i.test(trimmed)
   );
 }
 
@@ -1045,6 +1163,9 @@ function wrapConvexBody(line, { error = false, success = false } = {}) {
 }
 
 function formatConvexDeployment(team, project, ref, dashUrl) {
+  if (!rememberConvexBootKey(`dev:${team}/${project}:${ref}`)) {
+    return [];
+  }
   if (dashUrl) {
     pendingConvexDashboardUrl = dashUrl;
   }
@@ -1291,25 +1412,37 @@ function flattenNextFormatted(formatted, { error = false, success = false } = {}
 
 const NEXT_LINE_FORMATTERS = [
   [
-    /^▲ Next\.js (.+)$/,
-    ([, version]) => [
-      nextHead(NEXT_HEAD_BADGE),
-      nextRow(`${DEV_BADGE}  ${BOLD(version)}`),
-    ],
-  ],
-  [/^- Local:\s+(\S+)/, ([, url]) => nextRow(labeledLink("local", UNDERLINE(url)))],
-  [
-    /^- Network:\s+(\S+)/,
-    ([, url]) => nextRow(labeledLink("network", UNDERLINE(url))),
-  ],
-  [
-    /^- Environments:\s+(.+)$/,
-    ([, files]) => nextRow(labeledLink("env", files)),
+    /^▲ Next\.js (.+)$/i,
+    ([, version]) => {
+      if (!rememberNextBootKey(`version:${version}`)) {
+        return [];
+      }
+      return [
+        nextHead(NEXT_HEAD_BADGE),
+        nextRow(`${DEV_BADGE}  ${BOLD(version)}`),
+      ];
+    },
   ],
   [
-    /^✓ Ready in (.+)$/,
-    ([, duration]) =>
-      nextRow(branchLink(okLink("ready", duration)), { success: true }),
+    /^- Local:\s+(\S+)/i,
+    ([, url]) => formatNextBootLink("local", url) ?? [],
+  ],
+  [
+    /^- Network:\s+(\S+)/i,
+    ([, url]) => formatNextBootLink("network", url) ?? [],
+  ],
+  [
+    /^- Environments:\s+(.+)$/i,
+    ([, files]) => formatNextBootLink("env", files.trim()) ?? [],
+  ],
+  [
+    /^✓ Ready in (.+)$/i,
+    ([, duration]) => {
+      if (!rememberNextBootKey(`ready:${duration}`)) {
+        return [];
+      }
+      return nextRow(branchLink(okLink("ready", duration)), { success: true });
+    },
   ],
 ];
 
@@ -1423,6 +1556,10 @@ let convexDevRowEmitted = false;
 let flushConvexBootLinksAfterEmit = false;
 /** True after Convex head until first prepare/wait line — gap before ops. */
 let convexBootInfoOpen = false;
+/** Dedupe boot rows replayed by Convex carriage-return redraws. */
+const emittedConvexBootKeys = new Set();
+/** Dedupe Next boot rows replayed by Turbopack carriage-return redraws. */
+const emittedNextBootKeys = new Set();
 
 function isConvexWaitingPart(part) {
   return /^-\s+.+\.\.\.$/.test(stripAnsi(part).trim());
@@ -1559,7 +1696,7 @@ function printDevSessionHeader() {
 function printShutdownBanner() {
   process.stdout.write("\n");
   process.stdout.write(
-    `${DIM("dev")}  ${FAREWELL("goodbye")}  ${DIM("· next + convex stopped")}\n\n`,
+    `${FAREWELL_BAR} ${DIM("dev")}  ${FAREWELL("goodbye")}  ${DIM("· next + convex stopped")}\n\n`,
   );
 }
 
@@ -1581,6 +1718,8 @@ function beginShutdown(code = 0, { announce = false } = {}) {
   convexDevRowEmitted = false;
   flushConvexBootLinksAfterEmit = false;
   convexBootInfoOpen = false;
+  emittedConvexBootKeys.clear();
+  emittedNextBootKeys.clear();
   flushNextErrorBuffer();
   flushNextBrowserBuffer();
   flushConvexErrorBuffer();
@@ -1634,14 +1773,30 @@ function formatConvexLine(line) {
     return flattenConvexFormatted(setupAnswer, { success: true });
   }
 
+  const normalized = normalizeConvexPlain(plain);
+  const bootLink = parseConvexBootLinkLine(normalized);
+  if (bootLink) {
+    if (!bootLink.complete) {
+      return null;
+    }
+    const formatted = formatConvexSimpleLink(bootLink.label, bootLink.url);
+    if (!formatted || (Array.isArray(formatted) && !formatted.length)) {
+      return null;
+    }
+    return flattenConvexFormatted(formatted);
+  }
+
+  if (/^└/.test(normalized) && /\b(cloud|dashboard)\b/i.test(normalized)) {
+    return null;
+  }
+
   for (const [pattern, format] of CONVEX_LINE_FORMATTERS) {
-    const match = normalizeConvexPlain(plain).match(pattern);
+    const match = normalized.match(pattern);
     if (match) {
       return flattenConvexFormatted(format(match), barToneForPlain(plain));
     }
   }
 
-  const normalized = normalizeConvexPlain(plain);
   const waitingMatch = normalized.match(/^-\s+(.+\.\.\.)$/);
   if (waitingMatch) {
     return flattenConvexFormatted(convexWaitingRow(waitingMatch[1]));
@@ -1667,7 +1822,12 @@ function formatNextLine(line) {
     return null;
   }
 
-  const plain = stripAnsi(text).trim();
+  const plain = normalizeStreamPlain(text);
+  const bootLine = parseNextBootLine(plain);
+  if (bootLine && !bootLine.complete) {
+    return null;
+  }
+
   for (const [pattern, format] of NEXT_LINE_FORMATTERS) {
     const match = plain.match(pattern);
     if (match) {
@@ -1721,7 +1881,7 @@ function emitPart(part, prefix, formatLine, sourceName) {
     return;
   }
 
-  const plain = stripAnsi(part).trim();
+  const plain = normalizeStreamPlain(part);
   if (sourceName === "next") {
     if (isLcpImageWarning(plain) || isLcpContinuationLine(plain)) {
       if (nextBrowserMode !== "lcp") {
@@ -1781,6 +1941,10 @@ function emitPart(part, prefix, formatLine, sourceName) {
     return;
   }
   if (sourceName === "next" && nextErrorBuffer.length) {
+    if (isNextErrorContinuation(plain)) {
+      nextErrorBuffer.push(plain);
+      return;
+    }
     flushNextErrorBuffer(prefix);
   }
   if (
@@ -2212,6 +2376,8 @@ async function runDemoScenario(name, { fast }) {
   convexDevRowEmitted = false;
   flushConvexBootLinksAfterEmit = false;
   convexBootInfoOpen = false;
+  emittedConvexBootKeys.clear();
+  emittedNextBootKeys.clear();
   process.stdout.write(formatDemoScenarioHeader(name, scenario.label));
   lastLogSource = "demo";
 
