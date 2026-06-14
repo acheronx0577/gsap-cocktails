@@ -40,12 +40,20 @@
 
 ## How to Run
 
-**Prerequisites:** [Git](https://git-scm.com/), [Node.js](https://nodejs.org/), and [npm](https://www.npmjs.com/).
+**Prerequisites:** [Git](https://git-scm.com/), [Node.js](https://nodejs.org/), [npm](https://www.npmjs.com/), and a [Convex](https://www.convex.dev/) account for the contact form.
+
+**Live demo:** [velvet-pour-five-self.vercel.app](https://velvet-pour-five-self.vercel.app/)
 
 ```bash
-git clone https://github.com/acheronx0577/gsap-cocktails.git
-cd gsap-cocktails
+git clone https://github.com/acheronx0577/Velvet-Pour.git
+cd Velvet-Pour
 npm install
+cp .env.example .env.local
+```
+
+Add your Convex and contact-form secrets to `.env.local` (see `.env.example`), then start local Convex + Next.js together:
+
+```bash
 npm run dev
 ```
 
@@ -54,6 +62,9 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 **Other commands:**
 
 ```bash
-npm run build   # production build
-npm run start   # run production server locally
+npm run build              # production build
+npm run start              # run production server locally
+npm run convex:once        # push Convex functions once
+npm run test               # contact + Convex unit tests
+npm run review:fallow      # dead-code + duplication check
 ```
