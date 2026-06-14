@@ -105,23 +105,26 @@ const Contact = () => {
       <img src="/images/footer-left-leaf.png" alt="leaf-left" id="f-left-leaf" />
 
       <div className="content">
-        <h2>Where to Find Us</h2>
+        <h2>
+          <span>Send a Message to</span>{" "}
+          <span className="contact-hero-user">{CONTACT_USER}</span>
+        </h2>
 
         <div className="contact-grid">
           <div className="contact-info">
-            <div>
+            <div className="contact-info-block">
               <h3>Visit Our Bar</h3>
               <p className="contact-detail">{barAddress}</p>
               <p className="contact-note">Fake address for demo purposes only.</p>
             </div>
 
-            <div>
+            <div className="contact-info-block">
               <h3>Contact Us</h3>
               <p className="contact-detail">{barPhone}</p>
               <p className="contact-detail">{barEmail}</p>
             </div>
 
-            <div>
+            <div className="contact-info-block">
               <h3>Open Every Day</h3>
               {openingHours.map((time) => (
                 <p key={time.day}>
@@ -130,10 +133,10 @@ const Contact = () => {
               ))}
             </div>
 
-            <div>
+            <div className="contact-info-block">
               <h3>Socials</h3>
 
-              <div className="flex-center gap-5 justify-start">
+              <div className="contact-socials flex-center gap-5">
                 {socials.map((social) => (
                   <a
                     key={social.name}

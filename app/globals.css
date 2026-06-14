@@ -565,7 +565,7 @@ html::-webkit-scrollbar {
     }
 
     #contact {
-        @apply relative md:mt-20 mt-0 px-4 text-center w-full overflow-hidden radial-gradient;
+        @apply relative md:mt-20 mt-0 px-4 text-center w-full overflow-hidden bg-black;
 
         #f-left-leaf {
             @apply object-contain absolute -bottom-2 left-0 pointer-events-none lg:w-fit w-1/3;
@@ -576,27 +576,31 @@ html::-webkit-scrollbar {
         }
 
         .content {
-            @apply container mx-auto lg:py-14 2xl:py-32 py-16 flex flex-col justify-between gap-10 min-h-dvh;
+            @apply container mx-auto lg:py-14 2xl:py-32 py-16 flex flex-col justify-between gap-10 min-h-dvh 2xl:gap-16 2xl:px-8;
 
             h2 {
                 @apply lg:text-6xl 2xl:text-8xl text-5xl font-modern-negra md:translate-y-0 translate-y-5;
+
+                .contact-hero-user {
+                    @apply font-sans tabular-nums;
+                }
             }
 
             h3 {
-                @apply uppercase xl:text-base 2xl:text-lg text-base mb-2;
+                @apply uppercase xl:text-base 2xl:text-2xl text-base mb-2;
             }
 
             p:not(.form-hint):not(.contact-form-feedback):not(.contact-note) {
-                @apply lg:text-2xl 2xl:text-3xl text-sm;
+                @apply lg:text-2xl 2xl:text-4xl text-sm;
             }
         }
 
         .contact-grid {
-            @apply grid w-full max-w-6xl mx-auto gap-10 lg:grid-cols-2 lg:gap-14 text-left;
+            @apply grid w-full max-w-6xl mx-auto gap-10 lg:grid-cols-2 lg:gap-14 xl:max-w-7xl xl:gap-16 2xl:max-w-[88rem] 2xl:gap-24;
         }
 
         .contact-info {
-            @apply flex flex-col gap-8 lg:gap-10;
+            @apply order-2 flex w-full flex-col gap-10 lg:order-1 lg:gap-10 2xl:gap-14;
 
             p {
                 @apply text-white/80;
@@ -607,19 +611,47 @@ html::-webkit-scrollbar {
             }
 
             .contact-note {
-                @apply mt-1 text-xs leading-relaxed text-white/45 md:text-sm;
+                @apply mt-1 text-xs leading-relaxed text-white/45 md:text-sm 2xl:text-base;
+            }
+        }
+
+        .contact-info-block {
+            @apply flex w-full max-w-md flex-col items-center self-center text-center md:max-w-lg lg:max-w-none lg:items-start lg:self-auto lg:text-left;
+        }
+
+        .contact-info-block:nth-child(odd) {
+            @apply md:mr-auto md:items-start md:self-start md:text-left;
+        }
+
+        .contact-info-block:nth-child(even) {
+            @apply md:ml-auto md:items-end md:self-end md:text-right lg:ml-0 lg:items-start lg:self-auto lg:text-left;
+        }
+
+        .contact-info-block:nth-child(odd) .contact-socials {
+            @apply md:justify-start lg:justify-start;
+        }
+
+        .contact-info-block:nth-child(even) .contact-socials {
+            @apply md:justify-end lg:justify-start;
+        }
+
+        .contact-socials {
+            @apply justify-center;
+
+            img {
+                @apply size-8 xl:size-9 2xl:size-11;
             }
         }
 
         .contact-form {
-            @apply relative z-10 flex flex-col gap-6 rounded-3xl border border-white/10 bg-white/6 p-6 backdrop-blur-sm md:p-8;
+            @apply relative z-10 order-1 flex flex-col gap-6 rounded-3xl border border-white/10 bg-white/6 p-6 text-left backdrop-blur-sm md:p-8 lg:order-2 xl:gap-8 xl:p-10 2xl:gap-10 2xl:rounded-[2rem] 2xl:p-12;
         }
 
         .contact-form-head {
             @apply space-y-2;
 
             h3 {
-                @apply mb-0 text-left normal-case text-3xl tracking-wide text-white md:text-4xl;
+                @apply mb-0 text-left normal-case text-3xl tracking-wide text-white md:text-4xl 2xl:text-5xl;
             }
 
             .contact-form-title {
@@ -631,32 +663,32 @@ html::-webkit-scrollbar {
             }
 
             .form-hint {
-                @apply text-sm leading-relaxed text-white/55 md:text-base;
+                @apply text-sm leading-relaxed text-white/55 md:text-base xl:text-lg 2xl:text-xl;
             }
         }
 
         .contact-form-eyebrow {
-            @apply font-serif text-xs uppercase tracking-[0.38em] text-yellow/80 md:text-sm;
+            @apply font-serif text-xs uppercase tracking-[0.38em] text-yellow/80 md:text-sm 2xl:text-base;
         }
 
         .contact-form-fields {
-            @apply grid gap-5;
+            @apply grid gap-5 xl:gap-6 2xl:gap-8;
         }
 
         .contact-field {
             @apply flex flex-col gap-2 text-left;
 
             span {
-                @apply text-[0.68rem] uppercase tracking-[0.22em] text-white/55;
+                @apply text-[0.68rem] uppercase tracking-[0.22em] text-white/55 2xl:text-xs;
             }
 
             input,
             textarea {
-                @apply w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3.5 text-sm text-white outline-none transition-[border-color,background-color,box-shadow] duration-300 placeholder:text-white/30 focus:border-yellow/40 focus:bg-black/45 focus:ring-2 focus:ring-yellow/15 disabled:cursor-not-allowed disabled:opacity-60 md:text-base;
+                @apply w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3.5 text-sm text-white outline-none transition-[border-color,background-color,box-shadow] duration-300 placeholder:text-white/30 focus:border-yellow/40 focus:bg-black/45 focus:ring-2 focus:ring-yellow/15 disabled:cursor-not-allowed disabled:opacity-60 md:text-base xl:px-5 xl:py-4 xl:text-lg 2xl:rounded-3xl 2xl:px-6 2xl:py-5 2xl:text-xl;
             }
 
             textarea {
-                @apply min-h-32 resize-y;
+                @apply min-h-32 resize-y xl:min-h-36 2xl:min-h-44;
             }
         }
 
@@ -673,7 +705,7 @@ html::-webkit-scrollbar {
         }
 
         .contact-form-submit {
-            @apply inline-flex w-full items-center justify-center rounded-full border border-yellow/35 bg-yellow/10 px-5 py-3.5 uppercase tracking-[0.22em] text-[0.68rem] text-yellow transition-[background-color,color,transform,border-color] duration-300 hover:bg-yellow hover:text-black active:scale-[0.99] disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/5 disabled:text-white/35 md:py-3;
+            @apply inline-flex w-full items-center justify-center rounded-full border border-yellow/35 bg-yellow/10 px-5 py-3.5 uppercase tracking-[0.22em] text-[0.68rem] text-yellow transition-[background-color,color,transform,border-color] duration-300 hover:bg-yellow hover:text-black active:scale-[0.99] disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/5 disabled:text-white/35 md:py-3 xl:py-4 xl:text-xs 2xl:py-5 2xl:text-sm;
         }
 
         .drink-img {
