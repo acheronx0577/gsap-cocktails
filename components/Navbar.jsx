@@ -12,6 +12,11 @@ import { navLinks } from "@/constants";
 gsap.registerPlugin(ScrollTrigger);
 
 const NAV_SCROLL_OFFSET = -72;
+const NAV_SCROLL_OPTIONS = {
+  offset: NAV_SCROLL_OFFSET,
+  duration: 0.85,
+  easing: (t) => Math.min(1, 1.001 - 2 ** (-10 * t)),
+};
 const subscribeNoop = () => () => {};
 const getClientSnapshot = () => true;
 const getServerSnapshot = () => false;
@@ -145,21 +150,28 @@ const Navbar = () => {
     (sectionId) => {
       setMenuOpen(false);
       document.documentElement.classList.remove("nav-menu-open");
-      lenis?.start();
 
-      window.requestAnimationFrame(() => {
+      const runScroll = () => {
         const target = document.getElementById(sectionId);
         if (!target) {
           return;
         }
 
         if (lenis) {
-          lenis.scrollTo(target, { offset: NAV_SCROLL_OFFSET });
+          lenis.start();
+          lenis.scrollTo(target, {
+            ...NAV_SCROLL_OPTIONS,
+            force: true,
+            onComplete: () => ScrollTrigger.refresh(),
+          });
         } else {
           target.scrollIntoView({ behavior: "smooth", block: "start" });
+          ScrollTrigger.refresh();
         }
+      };
 
-        window.requestAnimationFrame(() => ScrollTrigger.refresh());
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(runScroll);
       });
     },
     [lenis],
@@ -243,7 +255,13 @@ const Navbar = () => {
           <ul className="nav-links" aria-label="Primary">
             {navLinks.map((link, index) => (
               <li key={link.id} className="nav-link-item">
-                <a href={`#${link.id}`}>
+                <a
+                  href={`#${link.id}`}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    scrollToSection(link.id);
+                  }}
+                >
                   <span className="nav-index">
                     {String(index + 1).padStart(2, "0")}
                   </span>
@@ -253,8 +271,15 @@ const Navbar = () => {
             ))}
           </ul>
 
-          <a href="#contact" className="nav-cta nav-link-item">
-            Book a Table
+          <a
+            href="#contact"
+            className="nav-cta nav-link-item"
+            onClick={(event) => {
+              event.preventDefault();
+              scrollToSection("contact");
+            }}
+          >
+            Want to say hello?
           </a>
 
           <button
@@ -351,7 +376,7 @@ const Navbar = () => {
                       }}
                       tabIndex={menuOpen ? 0 : -1}
                     >
-                      Book a Table
+                      Want to say hello?
                     </a>
                   </div>
                 </div>
