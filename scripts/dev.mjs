@@ -160,6 +160,8 @@ function convexLinkBadge(label) {
 }
 
 const DEV_BADGE = makeBadge([210, 236, 187], [43, 101, 54], "Development");
+const ERROR_BADGE = makeBadge([132, 28, 28], [255, 232, 232], "ERROR");
+const BRIGHT = (text) => `\x1b[38;2;255;244;244m${text}\x1b[39m`;
 /** Next pills — shared grey container + soft white-grey label. */
 const NEXT_PILL_BG = [46, 46, 48];
 const NEXT_PILL_FG = [228, 228, 230];
@@ -333,6 +335,9 @@ function shouldSuppressConvexLine(plain) {
   if (/^override the temporary directory|^Be sure to pick a temporary directory|^location with the CONVEX_TMPDIR/i.test(text)) {
     return true;
   }
+  if (isConvexErrorBufferPart(plain)) {
+    return true;
+  }
   return false;
 }
 
@@ -432,31 +437,69 @@ function barFor(sourceName, { error = false, success = false } = {}) {
 }
 
 function convexErrorDetailRow(message) {
-  return `${ERROR_BAR}    ${RED(message)}`;
+  return convexRow(`${DIM("│")}  ${BRIGHT(message)}`, { error: true });
+}
+
+function normalizeConvexErrorLine(plain) {
+  return normalizeConvexPlain(plain)
+    .replace(/^X\s+\[ERROR\]\s*/i, "")
+    .replace(/^\[ERROR\]\s*/i, "")
+    .replace(/^ERROR:\s*/i, "")
+    .trim();
 }
 
 function isLikelyConvexErrorDetail(plain) {
-  return /^(invalid|error|failed|could not|unexpected|cannot)/i.test(plain);
+  const text = normalizeConvexErrorLine(plain);
+  return /^(invalid|error|failed|could not|unexpected|cannot|esbuild|deployment error|push error|bundle error|schema error|build failed)/i.test(
+    text,
+  );
 }
 
 function isConvexErrorHead(plain) {
-  return /^✖/.test(plain);
+  return /^✖/.test(normalizeConvexPlain(plain));
 }
 
 function isConvexErrorBufferPart(plain) {
-  return isConvexErrorHead(plain) || isLikelyConvexErrorDetail(plain);
+  const text = normalizeConvexPlain(plain);
+  if (isConvexErrorHead(text) || isLikelyConvexErrorDetail(text)) {
+    return true;
+  }
+  if (/^\[ERROR\]|^X \[ERROR\]|^ERROR:/i.test(text)) {
+    return true;
+  }
+  if (/Could not resolve|esbuild failed|Build failed with \d+ error/i.test(text)) {
+    return true;
+  }
+  if (/convex-virtual-config:|\.config\.js:\d+:\d+:/.test(text)) {
+    return true;
+  }
+  if (/^You can mark the path .+ as external/i.test(text)) {
+    return true;
+  }
+  if (/^\d+\s*[│|]\s*/.test(text) || /^[╵~^]/.test(text)) {
+    return true;
+  }
+  if (/^import .+ from ["']/.test(text)) {
+    return true;
+  }
+  return false;
 }
 
 function classifyConvexError(buffer) {
-  const headLine = buffer.find(isConvexErrorHead) ?? "";
+  const normalized = buffer.map(normalizeConvexErrorLine).filter(Boolean);
+  const headLine = normalized.find((line) => /^✖/.test(line)) ?? "";
   const headline = headLine.replace(/^✖\s*/, "").trim();
-  const details = buffer.filter((line) => !isConvexErrorHead(line));
+  const details = normalized.filter((line) => !/^✖/.test(line));
   const primaryDetail = details[0] ?? "";
 
   let error = "deployment error";
-  if (/push/i.test(headline)) {
+  if (/push/i.test(headline) || /add `convex` to your package\.json/i.test(primaryDetail)) {
     error = "push error";
-  } else if (/bundl/i.test(headline)) {
+  } else if (/Could not resolve/i.test(primaryDetail)) {
+    error = "module error";
+  } else if (/esbuild/i.test(headline) || /esbuild/i.test(primaryDetail)) {
+    error = "build error";
+  } else if (/bundl/i.test(headline) || /bundl/i.test(primaryDetail)) {
     error = "bundle error";
   } else if (/schema/i.test(headline) || /schema/i.test(primaryDetail)) {
     error = "schema error";
@@ -468,27 +511,48 @@ function classifyConvexError(buffer) {
     headline ||
     "deployment failed";
 
+  const extras = details.slice(1).filter((line) => {
+    if (/^You can mark the path .+ as external/i.test(line)) {
+      return false;
+    }
+    return true;
+  });
+
   return {
     error,
     cause,
     headline,
-    extras: details.slice(1),
+    extras,
   };
 }
 
 function formatConvexErrorBlock(buffer) {
   const { error, cause, headline, extras } = classifyConvexError(buffer);
+  const showHeadline =
+    headline &&
+    headline !== cause &&
+    !cause.includes(headline) &&
+    !headline.includes(cause);
+
   const rows = [
-    convexRow(`${RED(error)} ${DIM("·")} ${RED(cause)}`, { error: true }),
+    convexRow(
+      `${ERROR_BADGE}  ${BOLD(BRIGHT(error))} ${DIM("·")} ${BRIGHT(cause)}`,
+      { error: true },
+    ),
   ];
-  if (headline) {
+
+  if (showHeadline) {
     rows.push(
-      convexRow(branchLink(`${RED("✖")} ${RED(headline)}`), { error: true }),
+      convexRow(`${DIM("cause")}  ${RED("✖")} ${BRIGHT(headline)}`, {
+        error: true,
+      }),
     );
   }
+
   for (const line of extras) {
     rows.push(convexErrorDetailRow(line));
   }
+
   return rows;
 }
 
@@ -560,16 +624,22 @@ function classifyNextCompileError(buffer) {
 
 function formatNextErrorBlock(buffer) {
   const { error, cause, location, extras } = classifyNextCompileError(buffer);
+  const showLocation =
+    location && location !== cause && !cause.includes(location);
+
   const rows = [
-    nextRow(`${RED(error)} ${DIM("·")} ${RED(cause)}`, { error: true }),
+    nextRow(
+      `${ERROR_BADGE}  ${BOLD(BRIGHT(error))} ${DIM("·")} ${BRIGHT(cause)}`,
+      { error: true },
+    ),
   ];
-  if (location) {
+  if (showLocation) {
     rows.push(
-      nextRow(branchLink(`${RED("⨯")} ${RED(location)}`), { error: true }),
+      nextRow(`${DIM("at")}  ${RED("⨯")} ${BRIGHT(location)}`, { error: true }),
     );
   }
   for (const line of extras) {
-    rows.push(nextErrorDetailRow(RED(line)));
+    rows.push(nextErrorDetailRow(BRIGHT(line)));
   }
   return rows;
 }
@@ -1401,6 +1471,7 @@ function flushConvexErrorBuffer(prefix = tagFor("convex")) {
   if (!convexErrorBuffer.length) {
     return;
   }
+  process.stdout.write("\n");
   const formatted = flattenConvexFormatted(
     formatConvexErrorBlock(convexErrorBuffer),
     { error: true },
@@ -1703,13 +1774,21 @@ function emitPart(part, prefix, formatLine, sourceName) {
     return;
   }
   if (sourceName === "convex" && isConvexErrorBufferPart(plain)) {
+    if (isConvexErrorHead(plain) && convexErrorBuffer.length) {
+      flushConvexErrorBuffer(prefix);
+    }
     convexErrorBuffer.push(plain);
     return;
   }
   if (sourceName === "next" && nextErrorBuffer.length) {
     flushNextErrorBuffer(prefix);
   }
-  if (sourceName === "convex" && convexErrorBuffer.length) {
+  if (
+    sourceName === "convex" &&
+    convexErrorBuffer.length &&
+    !isConvexErrorBufferPart(plain) &&
+    !isConvexWaitingPart(part)
+  ) {
     flushConvexErrorBuffer(prefix);
   }
 
@@ -2013,6 +2092,27 @@ const DEMO_SCENARIOS = {
         source: "convex",
         line: 'Invalid schema change in table "contacts"',
       },
+      { source: "convex", line: "- Preparing Convex functions..." },
+      {
+        source: "convex",
+        line: "✖ In order to push, add `convex` to your package.json dependencies.",
+      },
+      {
+        source: "convex",
+        line: "▌  X [ERROR] Could not resolve \"convex/server\"",
+      },
+      {
+        source: "convex",
+        line: "▌      convex-virtual-config:./convex/convex.config.js:1:26:",
+      },
+      {
+        source: "convex",
+        line: '▌        1 │ import { defineApp } from "convex/server";',
+      },
+      {
+        source: "convex",
+        line: "✖ esbuild failed: Error: Build failed with 1 error:",
+      },
       {
         source: "next",
         line: "__spawn_error__:ENOENT: npx next dev",
@@ -2124,6 +2224,8 @@ async function runDemoScenario(name, { fast }) {
 
   flushNextBrowserBuffer();
   flushNextRequestBurst();
+  flushNextErrorBuffer();
+  flushConvexErrorBuffer();
 }
 
 async function runDemo({ scenario, fast, shutdown: showShutdown }) {
