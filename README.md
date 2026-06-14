@@ -1,6 +1,13 @@
 <div align="center">
   <br />
-  <img src="MockUp/797_1x_shots_so.png" alt="Velvet Pour — GSAP Cocktail Website">
+  <a href="https://velvet-pour-five-self.vercel.app/">
+    <img src="MockUp/797_1x_shots_so.png" alt="Velvet Pour — GSAP Cocktail Website" width="560">
+  </a>
+  <br />
+  <br />
+  <a href="https://velvet-pour-five-self.vercel.app/">
+    <img src="MockUp/animated_450p.gif" alt="Velvet Pour scroll animations preview" width="560">
+  </a>
   <br />
   <h3>GSAP Cocktail Website</h3>
   <p>A scroll-driven cocktail landing page built with Next.js, GSAP, and Tailwind CSS.</p>
