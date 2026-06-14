@@ -1,6 +1,6 @@
 <div align="center">
   <br />
-  <img src="public/readme/hero.png" alt="Project Banner">
+  <img src="MockUp/797_1x_shots_so.png" alt="Velvet Pour — GSAP Cocktail Website">
   <br />
   <h3>GSAP Cocktail Website</h3>
   <p>A scroll-driven cocktail landing page built with Next.js, GSAP, and Tailwind CSS.</p>
