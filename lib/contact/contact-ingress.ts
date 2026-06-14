@@ -18,7 +18,8 @@ type IngressResult = {
   data: Record<string, unknown>;
 };
 
-const CONVEX_SITE_HOST = /\.convex\.(site|cloud)$/i;
+const CONVEX_HTTP_HOST = /\.convex\.site$/i;
+const CONVEX_API_HOST = /\.convex\.cloud$/i;
 const LOCAL_CONVEX_API_PORT = "3210";
 const LOCAL_CONVEX_SITE_PORT = "3211";
 const INGRESS_TIMEOUT_MS = 10_000;
@@ -43,6 +44,10 @@ function normalizeLocalConvexSiteUrl(origin: string) {
   }
 }
 
+function remapConvexApiHostToSite(hostname: string) {
+  return hostname.replace(/\.convex\.cloud$/i, ".convex.site");
+}
+
 // fallow-ignore-next-line complexity
 function parseConvexSiteUrl(raw: string | undefined) {
   const value = raw?.trim();
@@ -55,7 +60,11 @@ function parseConvexSiteUrl(raw: string | undefined) {
       (url.hostname === "127.0.0.1" || url.hostname === "localhost");
     if (isLocal) return normalizeLocalConvexSiteUrl(url.origin);
     if (url.protocol !== "https:") return "";
-    if (!CONVEX_SITE_HOST.test(url.hostname)) return "";
+    if (CONVEX_API_HOST.test(url.hostname)) {
+      url.hostname = remapConvexApiHostToSite(url.hostname);
+    } else if (!CONVEX_HTTP_HOST.test(url.hostname)) {
+      return "";
+    }
     return url.origin;
   } catch {
     return "";
@@ -65,7 +74,8 @@ function parseConvexSiteUrl(raw: string | undefined) {
 function getConvexSiteUrl() {
   return (
     parseConvexSiteUrl(process.env.CONVEX_SITE_URL) ||
-    parseConvexSiteUrl(process.env.NEXT_PUBLIC_CONVEX_SITE_URL)
+    parseConvexSiteUrl(process.env.NEXT_PUBLIC_CONVEX_SITE_URL) ||
+    parseConvexSiteUrl(process.env.NEXT_PUBLIC_CONVEX_URL)
   );
 }
 
@@ -100,7 +110,21 @@ export async function forwardContactToConvex(
       signal: controller.signal,
     });
 
-    const data = (await response.json()) as Record<string, unknown>;
+    let data: Record<string, unknown>;
+    try {
+      data = (await response.json()) as Record<string, unknown>;
+    } catch {
+      return {
+        ok: false,
+        status: 502,
+        data: {
+          ok: false,
+          error:
+            "Contact service returned an invalid response. Check CONVEX_SITE_URL uses your *.convex.site URL.",
+        },
+      };
+    }
+
     return { ok: response.ok, status: response.status, data };
   } catch (err) {
     const aborted = err instanceof Error && err.name === "AbortError";
@@ -111,7 +135,7 @@ export async function forwardContactToConvex(
         ok: false,
         error: aborted
           ? "Contact service timed out. Try again later."
-          : "Could not send your message.",
+          : "Could not reach the contact service. Try again later.",
       },
     };
   } finally {

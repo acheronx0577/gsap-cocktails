@@ -5,6 +5,7 @@ import { forwardContactToConvex, signIpHint } from "./contact-ingress.ts";
 
 const ORIGINAL_SITE = process.env.CONVEX_SITE_URL;
 const ORIGINAL_PUBLIC_SITE = process.env.NEXT_PUBLIC_CONVEX_SITE_URL;
+const ORIGINAL_PUBLIC_URL = process.env.NEXT_PUBLIC_CONVEX_URL;
 const ORIGINAL_SECRET = process.env.CONTACT_INGRESS_SECRET;
 
 describe("forwardContactToConvex", () => {
@@ -18,6 +19,11 @@ describe("forwardContactToConvex", () => {
       delete process.env.NEXT_PUBLIC_CONVEX_SITE_URL;
     } else {
       process.env.NEXT_PUBLIC_CONVEX_SITE_URL = ORIGINAL_PUBLIC_SITE;
+    }
+    if (ORIGINAL_PUBLIC_URL === undefined) {
+      delete process.env.NEXT_PUBLIC_CONVEX_URL;
+    } else {
+      process.env.NEXT_PUBLIC_CONVEX_URL = ORIGINAL_PUBLIC_URL;
     }
     if (ORIGINAL_SECRET === undefined) {
       delete process.env.CONTACT_INGRESS_SECRET;
@@ -53,6 +59,52 @@ describe("forwardContactToConvex", () => {
     });
 
     assert.equal("reason" in result && result.reason, "missing_config");
+  });
+
+  it("remaps cloud Convex API URLs to the HTTP actions site host", async () => {
+    process.env.CONVEX_SITE_URL = "https://greedy-poodle-482.convex.cloud";
+    process.env.CONTACT_INGRESS_SECRET = "test-secret";
+
+    const { captured, restore } = stubFetch(
+      new Response(JSON.stringify({ ok: true, id: "sub_1" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    await forwardContactToConvex({
+      name: "Ada",
+      email: "ada@example.com",
+      message: "Hello",
+      ipHint: "203.0.113.44",
+    });
+    restore();
+
+    assert.equal(captured.url, "https://greedy-poodle-482.convex.site/contact");
+  });
+
+  it("falls back to NEXT_PUBLIC_CONVEX_URL when site URL env vars are unset", async () => {
+    delete process.env.CONVEX_SITE_URL;
+    delete process.env.NEXT_PUBLIC_CONVEX_SITE_URL;
+    process.env.NEXT_PUBLIC_CONVEX_URL = "https://greedy-poodle-482.convex.cloud";
+    process.env.CONTACT_INGRESS_SECRET = "test-secret";
+
+    const { captured, restore } = stubFetch(
+      new Response(JSON.stringify({ ok: true, id: "sub_1" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    await forwardContactToConvex({
+      name: "Ada",
+      email: "ada@example.com",
+      message: "Hello",
+      ipHint: "203.0.113.44",
+    });
+    restore();
+
+    assert.equal(captured.url, "https://greedy-poodle-482.convex.site/contact");
   });
 
   it("forwards payload with bearer auth", async () => {
