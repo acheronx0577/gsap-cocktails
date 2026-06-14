@@ -65,7 +65,7 @@ export default function SmoothScroll({ children }) {
         autoRaf: false,
         lerp: 0.1,
         smoothWheel: true,
-        anchors: true,
+        anchors: false,
       }}
     >
       <LenisScrollTriggerSync />

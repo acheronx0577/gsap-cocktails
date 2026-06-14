@@ -1,18 +1,15 @@
 "use client";
 
 import gsap from "gsap";
-import { useMediaQuery } from "react-responsive";
 import { useGSAP } from "@gsap/react";
 
 import { featureLists, goodLists } from "@/constants";
 
 const Art = () => {
-  const isMobile = useMediaQuery({ maxWidth: 767 });
+  useGSAP(() => {
+    const mm = gsap.matchMedia();
 
-  useGSAP(
-    () => {
-      const start = isMobile ? "top 20%" : "top top";
-
+    const createMaskTimeline = (start) => {
       const maskTimeline = gsap.timeline({
         scrollTrigger: {
           trigger: "#art",
@@ -33,9 +30,13 @@ const Art = () => {
           ease: "power1.inOut ",
         })
         .to("#masked-content", { opacity: 1, duration: 1, ease: "power1.inOut" });
-    },
-    { dependencies: [isMobile] }
-  );
+    };
+
+    mm.add("(max-width: 767px)", () => createMaskTimeline("top 20%"));
+    mm.add("(min-width: 768px)", () => createMaskTimeline("top top"));
+
+    return () => mm.revert();
+  }, []);
 
   return (
     <div id="art">

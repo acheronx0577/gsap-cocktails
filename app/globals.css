@@ -29,6 +29,23 @@ html {
     -ms-overflow-style: none;
 }
 
+html.nav-menu-open {
+    overflow: hidden;
+    overscroll-behavior: none;
+}
+
+html.nav-menu-open body {
+    overflow: hidden;
+    overscroll-behavior: none;
+}
+
+@media (max-width: 767px) {
+    html.nav-menu-open,
+    html.nav-menu-open body {
+        touch-action: none;
+    }
+}
+
 html::-webkit-scrollbar {
     display: none;
 }
@@ -69,19 +86,27 @@ html::-webkit-scrollbar {
 }
 
 @layer components {
+    .pin-spacer {
+        z-index: 1;
+    }
+
     main {
         @apply w-full overflow-x-hidden;
     }
 
     nav {
-        @apply fixed z-50 w-full overflow-x-clip border-b border-transparent transition-[border-color] duration-300;
+        @apply fixed z-100 w-full;
+
+        .nav-bar-bg {
+            @apply pointer-events-none absolute inset-x-0 top-0 bottom-0 -z-10 border-b border-transparent bg-transparent transition-[background-color,border-color,backdrop-filter] duration-300;
+        }
 
         .nav-shell {
-            @apply flex min-w-0 items-center justify-between gap-4 py-4 lg:px-0 px-5 container mx-auto lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-center lg:gap-6;
+            @apply relative z-70 flex min-w-0 items-center justify-between gap-4 py-4 xl:px-0 px-5 container mx-auto xl:grid xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] xl:items-center xl:gap-6;
         }
 
         .nav-brand {
-            @apply flex min-w-0 items-center gap-3 shrink-0 lg:justify-self-start;
+            @apply flex min-w-0 items-center gap-3 shrink-0 xl:justify-self-start;
 
             img {
                 @apply size-11 object-contain;
@@ -101,7 +126,7 @@ html::-webkit-scrollbar {
         }
 
         .nav-links {
-            @apply hidden lg:flex lg:justify-self-center items-center gap-0.5 rounded-full border border-white/10 bg-white/3 px-1.5 py-1 backdrop-blur-sm shrink-0;
+            @apply hidden xl:flex xl:justify-self-center items-center gap-0.5 rounded-full border border-white/10 bg-white/3 px-1.5 py-1 backdrop-blur-sm shrink-0;
         }
 
         .nav-link-item a,
@@ -131,11 +156,11 @@ html::-webkit-scrollbar {
         }
 
         .nav-cta {
-            @apply hidden lg:inline-flex lg:justify-self-end shrink-0 border border-yellow/35 bg-yellow/6 px-4 py-2.5 uppercase tracking-[0.18em] text-[0.65rem] text-yellow hover:bg-yellow hover:text-black xl:px-5 xl:tracking-[0.22em] xl:text-[0.68rem];
+            @apply hidden xl:inline-flex xl:justify-self-end shrink-0 border border-yellow/35 bg-yellow/6 px-4 py-2.5 uppercase tracking-[0.18em] text-[0.65rem] text-yellow hover:bg-yellow hover:text-black xl:px-5 xl:tracking-[0.22em] xl:text-[0.68rem];
         }
 
         .nav-toggle {
-            @apply relative ml-auto flex size-11 shrink-0 flex-col items-center justify-center gap-1.5 rounded-full border border-white/15 bg-white/4 lg:hidden;
+            @apply relative ml-auto flex size-11 shrink-0 touch-manipulation flex-col items-center justify-center gap-1.5 rounded-full border border-white/15 bg-white/4 xl:hidden;
 
             span {
                 @apply block h-px w-5 bg-white transition-transform duration-300;
@@ -154,29 +179,131 @@ html::-webkit-scrollbar {
             @apply translate-y-[-7px] -rotate-45;
         }
 
-        .nav-mobile-panel {
-            @apply lg:hidden border-t border-white/10 bg-black/90 px-5 py-8 backdrop-blur-xl;
-
-            &[hidden] {
-                @apply hidden;
-            }
+        &.nav-open .nav-bar-bg {
+            @apply border-yellow/20 bg-black/45 backdrop-blur-xl;
         }
 
-        .nav-mobile-links {
-            @apply flex flex-col gap-2;
-
-            a {
-                @apply flex items-center gap-4 rounded-2xl border border-transparent px-4 py-4 text-white/80 transition-colors hover:border-yellow/20 hover:bg-white/4 hover:text-yellow;
-            }
-        }
-
-        .nav-mobile-cta {
-            @apply mt-6 flex w-full items-center justify-center rounded-full border border-yellow/35 bg-yellow/6 px-5 py-3 uppercase tracking-[0.22em] text-[0.68rem] text-yellow hover:bg-yellow hover:text-black transition-colors duration-300;
+        &.nav-open .nav-toggle {
+            @apply relative z-70 border-yellow/30 bg-yellow/8;
         }
 
         a {
             @apply cursor-pointer;
         }
+    }
+
+    .nav-mobile-panel {
+        @apply pointer-events-none invisible fixed inset-0 z-90 size-full max-w-none overflow-hidden opacity-0 transition-[opacity,visibility] duration-300 xl:hidden md:bg-black/50 md:backdrop-blur-[6px];
+    }
+
+    .nav-mobile-panel.is-open {
+        @apply pointer-events-auto visible opacity-100;
+    }
+
+    .nav-mobile-backdrop {
+        @apply absolute inset-0 z-0 cursor-pointer border-0 bg-transparent p-0;
+    }
+
+    .nav-mobile-sheet {
+        @apply relative z-10 mx-auto flex min-h-dvh w-full max-w-5xl flex-col overflow-hidden md:mt-[calc(var(--spacing)*17)] md:h-auto md:max-h-[calc(100dvh-var(--spacing)*18)] md:min-h-0 md:rounded-b-[1.75rem] md:border-b md:border-white/10 md:shadow-[0_24px_80px_rgba(0,0,0,0.55)];
+
+        background:
+            radial-gradient(120% 80% at 50% -20%, rgb(231 211 147 / 0.12), transparent 55%),
+            linear-gradient(180deg, rgb(0 0 0 / 0.82) 0%, rgb(0 0 0 / 0.94) 100%);
+        backdrop-filter: blur(22px);
+    }
+
+    .nav-mobile-grab {
+        @apply hidden shrink-0 touch-none flex-col items-center pt-3 pb-2 md:flex md:pt-2 md:pb-1;
+    }
+
+    .nav-mobile-grab::before {
+        @apply block h-1 w-10 rounded-full bg-white/25 content-[''];
+    }
+
+    .nav-mobile-stage {
+        @apply relative flex min-h-0 w-full flex-1 flex-col overflow-y-auto overscroll-contain px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[calc(var(--spacing)*17+1rem)] md:px-10 md:pb-4 md:pt-2 lg:px-12;
+    }
+
+    .nav-mobile-inner {
+        @apply flex min-h-[calc(100dvh-var(--spacing)*17-2rem)] flex-col gap-6 md:min-h-0 md:gap-2.5;
+    }
+
+    .nav-mobile-head {
+        @apply flex shrink-0 items-end justify-between gap-4 border-b border-white/10 pb-5 md:pb-3;
+    }
+
+    .nav-mobile-eyebrow {
+        @apply font-serif text-xs uppercase tracking-[0.38em] text-yellow/80 md:text-sm;
+    }
+
+    .nav-mobile-headline {
+        @apply text-right;
+    }
+
+    .nav-mobile-title {
+        @apply font-modern-negra text-xl tracking-wide text-white/90 md:text-2xl;
+    }
+
+    .nav-mobile-hours {
+        @apply mt-1 text-[0.65rem] uppercase tracking-[0.22em] text-white/45 md:text-[0.68rem];
+    }
+
+    .nav-mobile-links {
+        @apply grid flex-1 grid-cols-1 gap-3 place-content-center md:grid-cols-2 md:flex-none md:gap-2.5 md:place-content-start;
+
+        li {
+            @apply min-h-0;
+        }
+
+        a {
+            @apply flex h-full min-h-19 items-center gap-4 rounded-2xl border border-white/10 bg-white/6 px-4 py-4 text-white/90 transition-[border-color,background-color,transform] duration-300 hover:border-yellow/30 hover:bg-white/10 hover:text-yellow active:scale-[0.99] md:min-h-16 md:px-4 md:py-3;
+        }
+
+        .nav-label {
+            @apply text-[0.82rem] tracking-[0.14em] md:text-[0.88rem];
+        }
+    }
+
+    .nav-mobile-link-copy {
+        @apply flex min-w-0 flex-1 flex-col gap-1;
+    }
+
+    .nav-mobile-link-hint {
+        @apply text-[0.68rem] normal-case tracking-normal text-white/45 md:text-[0.72rem];
+    }
+
+    .nav-mobile-link-arrow {
+        @apply shrink-0 text-sm text-yellow/50 transition-[transform,color] duration-300;
+    }
+
+    .nav-mobile-links a:hover .nav-mobile-link-arrow {
+        @apply translate-x-1 text-yellow/80;
+    }
+
+    .nav-mobile-foot {
+        @apply mt-auto flex shrink-0 flex-col gap-4 border-t border-white/10 pt-5 md:mt-0 md:flex-row md:items-center md:justify-between md:gap-4 md:pt-3;
+    }
+
+    .nav-mobile-meta {
+        @apply text-[0.65rem] uppercase tracking-[0.2em] text-white/40 md:text-[0.68rem];
+    }
+
+    .nav-mobile-cta {
+        @apply inline-flex w-full items-center justify-center rounded-full border border-yellow/35 bg-yellow/10 px-5 py-3.5 uppercase tracking-[0.22em] text-[0.68rem] text-yellow transition-colors duration-300 hover:bg-yellow hover:text-black md:w-auto md:min-w-48 md:py-3;
+    }
+
+    .nav-mobile-links a,
+    .nav-mobile-cta {
+        @apply cursor-pointer;
+    }
+
+    .nav-mobile-panel .nav-index {
+        @apply font-serif text-[0.72rem] text-yellow/85 tabular-nums md:text-[0.78rem];
+    }
+
+    .nav-mobile-panel .nav-label {
+        @apply whitespace-nowrap uppercase tracking-[0.12em] font-sans;
     }
 
     .noisy {

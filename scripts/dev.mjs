@@ -174,6 +174,9 @@ const NEXT_HEAD_BADGE = nextLinkBadge("Next.js");
 const NEXT_LOCAL_BADGE = nextLinkBadge("local");
 const NEXT_NETWORK_BADGE = nextLinkBadge("network");
 const NEXT_ENV_BADGE = makeBadge([236, 228, 210], [102, 72, 38], "env");
+const NEXT_DEPS_BADGE = makeBadge([210, 236, 220], [43, 101, 68], "deps");
+const NEXT_AUDIT_BADGE = makeBadge([236, 214, 180], [120, 72, 28], "audit");
+const NEXT_TS_BADGE = makeBadge([214, 220, 236], [72, 82, 118], "tsconfig");
 const CONVEX_CLOUD_BADGE = convexLinkBadge("cloud");
 const CONVEX_DASHBOARD_BADGE = convexLinkBadge("dashboard");
 
@@ -828,10 +831,22 @@ function isHydrationTreeLine(plain) {
   if (isKnownNextBootLine(trimmed)) {
     return false;
   }
+  if (/^Uncaught Error:/i.test(trimmed) || /Hydration failed/i.test(trimmed)) {
+    return true;
+  }
+  if (/^at /i.test(trimmed) || /^at <unknown>/i.test(trimmed)) {
+    return true;
+  }
+  if (/^\d+\s*\|/.test(trimmed) || /^\|\s*\^/.test(trimmed)) {
+    return true;
+  }
   if (/^A tree hydrated/i.test(trimmed)) {
     return true;
   }
   if (/^https:\/\/react\.dev\/link\/hydration-mismatch/i.test(trimmed)) {
+    return true;
+  }
+  if (/SSR\/client HTML differ/i.test(trimmed)) {
     return true;
   }
   if (
@@ -876,17 +891,40 @@ function formatHydrationMismatchSummary(buffer) {
     ? "Cursor preview data-cursor-ref — safe to ignore in Glass"
     : "SSR/client HTML differ — check window, Date, or random values";
 
+  const stackLine = buffer.find((line) =>
+    /\bat \S+/.test(stripBrowserPrefix(line)),
+  );
+  const stackMatch = stackLine
+    ? stripBrowserPrefix(stackLine).match(/^at (\S+)(?: \((.+)\))?/)
+    : null;
+
   const rows = [
     nextRow(
       `${AMBER("⚠")} ${AMBER("hydration")} ${DIM("·")} ${DIM(hint)}${nodeCount ? DIM(` · ${nodeCount} nodes`) : ""}`,
     ),
   ];
-  if (!cursorRef) {
+  if (stackMatch) {
+    const target = stackMatch[2]
+      ? `${stackMatch[1]} (${stackMatch[2]})`
+      : stackMatch[1];
+    rows.push(nextWarningDetailRow(DIM(`at ${target}`)));
+  } else if (!cursorRef) {
     rows.push(
       nextWarningDetailRow(UNDERLINE("https://react.dev/link/hydration-mismatch")),
     );
   }
   return rows;
+}
+
+function hydrationSummaryKey(buffer) {
+  const full = buffer.map(stripBrowserPrefix).join("\n");
+  const atMatch = full.match(/\bat (\w+)/);
+  const fileMatch = full.match(/([\w./\\-]+\.(?:jsx|tsx|js|ts)):(\d+)/);
+  return `${atMatch?.[1] ?? "unknown"}:${fileMatch?.[1] ?? "unknown"}:${fileMatch?.[2] ?? "0"}`;
+}
+
+function isRawHydrationNoise(plain) {
+  return /hydration-mismatch|SSR\/client HTML differ|A tree hydrated/i.test(plain);
 }
 
 function isLcpImageWarning(plain) {
@@ -926,8 +964,207 @@ function formatLcpWarningRows(input) {
   ];
 }
 
+function isRscPayloadErrorLine(plain) {
+  const body = stripBrowserPrefix(plain).trim();
+  return (
+    /Failed to fetch RSC payload/i.test(body) ||
+    /Falling back to browser navigation/i.test(body) ||
+    /^TypeError:\s*network error$/i.test(body)
+  );
+}
+
+function rscPayloadSummaryKey(buffer) {
+  const full = buffer.map(stripBrowserPrefix).join(" ");
+  const hashMatch = full.match(/#([\w-]+)/);
+  const originMatch = full.match(/(https?:\/\/[^\s#]+)/);
+  return `${originMatch?.[1] ?? "unknown"}:${hashMatch?.[1] ?? "root"}`;
+}
+
+function formatRscPayloadSummary(buffer) {
+  const full = buffer.map(stripBrowserPrefix).join(" ");
+  const hashMatch = full.match(/#([\w-]+)/);
+  const target = hashMatch?.[1] ? `#${hashMatch[1]}` : "page";
+  const schemeHint = /http:\/\/localhost/i.test(full)
+    ? "hash nav · browser fallback"
+    : "browser fallback";
+
+  return [
+    nextRow(
+      `${AMBER("⚠")} ${AMBER("nav")} ${DIM("·")} ${DIM(`RSC fetch failed for ${target}`)} ${DIM("·")} ${DIM(schemeHint)}`,
+    ),
+  ];
+}
+
+function isCssBuildErrorLine(plain) {
+  const body = stripBrowserPrefix(plain).trim();
+  if (!body) {
+    return false;
+  }
+  if (/CssSyntaxError:/i.test(body)) {
+    return true;
+  }
+  if (/Error evaluating Node\.js code/i.test(body)) {
+    return true;
+  }
+  if (/Cannot apply unknown utility class/i.test(body)) {
+    return true;
+  }
+  if (/^Import trace:/i.test(body)) {
+    return true;
+  }
+  if (/^(Client Component Browser|Server Component):/i.test(body)) {
+    return true;
+  }
+  if (/^\.\/app\/[^\s'"]+/i.test(body)) {
+    return true;
+  }
+  if (/^\[at \S+/i.test(body)) {
+    return true;
+  }
+  if (/^\[browser\]\s+\.\/app\//i.test(plain)) {
+    return true;
+  }
+  return false;
+}
+
+function cssBuildErrorKey(lines) {
+  const full = lines.map(stripBrowserPrefix).join("\n");
+  const cssMatch = full.match(/CssSyntaxError:[^\n]+/i);
+  const fileMatch = full.match(/\.\/(app\/[^\s'"]+)/i);
+  const classMatch = full.match(/unknown utility class [`']([^`']+)[`']/i);
+  return `${fileMatch?.[1] ?? "app/globals.css"}:${classMatch?.[1] ?? cssMatch?.[0] ?? "css-error"}`;
+}
+
+function formatCssBuildErrorSummary(lines, count = 1) {
+  const full = lines.map(stripBrowserPrefix).join("\n");
+  const unknownClass = full.match(/unknown utility class [`']([^`']+)[`']/i);
+  const fileMatch = full.match(/\.\/(app\/[^\s'"]+)/i);
+  const cssTail = full.match(/CssSyntaxError:\s*([^\n]+)/i)?.[1] ?? "CSS build failed";
+  const cause = unknownClass?.[1]
+    ? `unknown class ${unknownClass[1]}`
+    : cssTail.replace(/^tailwindcss:\s*/i, "").trim();
+  const file = fileMatch?.[1] ?? "app/globals.css";
+  const clipped = cause.length > 72 ? `${cause.slice(0, 69)}…` : cause;
+  const countSuffix = count > 1 ? ` ${DIM("×")}${count}` : "";
+
+  return [
+    nextRow(
+      `${ERROR_BADGE}  ${BOLD("css")}${countSuffix} ${DIM("·")} ${BRIGHT(clipped)} ${DIM("·")} ${file}`,
+      { error: true },
+    ),
+  ];
+}
+
+const CSS_ERROR_COLLAPSE_MS = 700;
+const CSS_ERROR_COOLDOWN_MS = 30000;
+/** @type {string[]} */
+let cssErrorPartBuffer = [];
+/** @type {ReturnType<typeof setTimeout> | null} */
+let cssErrorPartTimer = null;
+/** @type {{ key: string; lines: string[]; count: number; prefix: string } | null} */
+let cssErrorBurst = null;
+/** @type {ReturnType<typeof setTimeout> | null} */
+let cssErrorBurstTimer = null;
+let lastCssErrorEmitKey = null;
+let lastCssErrorEmitAt = 0;
+
+function flushCssErrorPartBuffer(prefix = tagFor("next")) {
+  if (!cssErrorPartBuffer.length) {
+    return;
+  }
+  const lines = cssErrorPartBuffer;
+  cssErrorPartBuffer = [];
+  if (cssErrorPartTimer) {
+    clearTimeout(cssErrorPartTimer);
+    cssErrorPartTimer = null;
+  }
+  scheduleCssErrorBurst(lines, prefix);
+}
+
+function scheduleCssErrorPart(prefix, plain) {
+  cssErrorPartBuffer.push(plain);
+
+  if (/CssSyntaxError:/i.test(stripBrowserPrefix(plain))) {
+    const lines = [...cssErrorPartBuffer];
+    cssErrorPartBuffer = [];
+    if (cssErrorPartTimer) {
+      clearTimeout(cssErrorPartTimer);
+      cssErrorPartTimer = null;
+    }
+    scheduleCssErrorBurst(lines, prefix);
+    return;
+  }
+
+  if (cssErrorPartTimer) {
+    clearTimeout(cssErrorPartTimer);
+  }
+  cssErrorPartTimer = setTimeout(
+    () => flushCssErrorPartBuffer(prefix),
+    CSS_ERROR_COLLAPSE_MS,
+  );
+}
+
+function flushCssErrorBurst() {
+  if (!cssErrorBurst) {
+    return;
+  }
+  const burst = cssErrorBurst;
+  cssErrorBurst = null;
+  if (cssErrorBurstTimer) {
+    clearTimeout(cssErrorBurstTimer);
+    cssErrorBurstTimer = null;
+  }
+
+  const now = Date.now();
+  if (
+    burst.key === lastCssErrorEmitKey &&
+    now - lastCssErrorEmitAt < CSS_ERROR_COOLDOWN_MS
+  ) {
+    return;
+  }
+
+  lastCssErrorEmitKey = burst.key;
+  lastCssErrorEmitAt = now;
+  emitFormatted(
+    "next",
+    burst.prefix,
+    flattenNextFormatted(formatCssBuildErrorSummary(burst.lines, burst.count), {
+      error: true,
+    }),
+  );
+}
+
+function scheduleCssErrorBurst(lines, prefix) {
+  const key = cssBuildErrorKey(lines);
+
+  if (cssErrorBurst && cssErrorBurst.key === key) {
+    cssErrorBurst.count += 1;
+    cssErrorBurst.lines = lines;
+  } else {
+    flushCssErrorBurst();
+    cssErrorBurst = { key, lines, count: 1, prefix };
+  }
+
+  if (cssErrorBurstTimer) {
+    clearTimeout(cssErrorBurstTimer);
+  }
+  cssErrorBurstTimer = setTimeout(flushCssErrorBurst, CSS_ERROR_COLLAPSE_MS);
+}
+
 function isNextBrowserMisc(plain) {
-  return /^\[browser\]\s+/.test(plain);
+  if (!/^\[browser\]\s+/.test(plain)) {
+    return false;
+  }
+  if (/Hydration failed|hydration-mismatch/i.test(plain)) {
+    return false;
+  }
+  if (isRscPayloadErrorLine(plain)) {
+    return false;
+  }
+  if (isCssBuildErrorLine(plain)) {
+    return false;
+  }
+  return true;
 }
 
 function formatNextBrowserMiscRows(plain) {
@@ -997,6 +1234,132 @@ function formatNextCompileDone(plain) {
     nextHead(BOLD("COMPILE")),
     nextRow(branchLink(detail), { success: true }),
   ];
+}
+
+function isNextNpmFundNoise(plain) {
+  return (
+    /packages? are looking for funding/i.test(plain) ||
+    /^run `npm fund` for details\.?$/i.test(plain)
+  );
+}
+
+function isNextNpmAuditTailNoise(plain) {
+  return (
+    /^To address all issues/i.test(plain) ||
+    /^Run `npm audit` for details\.?$/i.test(plain) ||
+    /^npm audit fix --force/i.test(plain)
+  );
+}
+
+function isNextTsconfigNoise(plain) {
+  return (
+    /We detected TypeScript/i.test(plain) ||
+    /tsconfig\.json/i.test(plain) ||
+    /Strict-mode is set/i.test(plain) ||
+    /following suggested values/i.test(plain) ||
+    /following mandatory changes/i.test(plain) ||
+    /can be changed to fit your project/i.test(plain)
+  );
+}
+
+function formatNextNpmNoise(plain) {
+  if (isNextNpmFundNoise(plain) || isNextNpmAuditTailNoise(plain)) {
+    return [];
+  }
+
+  const added = plain.match(
+    /^added (\d+) packages?(?:, and audited (\d+) packages?)? in (\S+)$/i,
+  );
+  if (added) {
+    const [, count, audited, duration] = added;
+    const key = `npm:added:${count}:${audited ?? "0"}:${duration}`;
+    if (!rememberNextBootKey(key)) {
+      return [];
+    }
+    const auditedPart = audited
+      ? ` ${DIM("·")} ${DIM(`${audited} audited in ${duration}`)}`
+      : ` ${DIM("·")} ${DIM(duration)}`;
+    return flattenNextFormatted(
+      nextRow(
+        badgeLink(
+          NEXT_DEPS_BADGE,
+          `${GREEN("✔")} ${WHITE(`+${count} packages`)}${auditedPart}`,
+        ),
+        { success: true },
+      ),
+    );
+  }
+
+  const upToDate = plain.match(/^up to date, audited (\d+) packages? in (\S+)$/i);
+  if (upToDate) {
+    const key = `npm:audit:${upToDate[1]}:${upToDate[2]}`;
+    if (!rememberNextBootKey(key)) {
+      return [];
+    }
+    return flattenNextFormatted(
+      nextRow(
+        badgeLink(
+          NEXT_DEPS_BADGE,
+          `${GREEN("✔")} ${DIM("up to date")} ${DIM("·")} ${DIM(`${upToDate[1]} packages in ${upToDate[2]}`)}`,
+        ),
+        { success: true },
+      ),
+    );
+  }
+
+  if (/^found 0 vulnerabilities\.?$/i.test(plain)) {
+    if (!rememberNextBootKey("npm:vuln:0")) {
+      return [];
+    }
+    return flattenNextFormatted(
+      nextRow(
+        badgeLink(NEXT_AUDIT_BADGE, `${GREEN("✔")} ${DIM("no vulnerabilities")}`),
+        { success: true },
+      ),
+    );
+  }
+
+  const vuln = plain.match(/^(\d+) vulnerabilities? \((.+)\)$/i);
+  if (vuln) {
+    const key = `npm:vuln:${vuln[1]}:${vuln[2]}`;
+    if (!rememberNextBootKey(key)) {
+      return [];
+    }
+    return flattenNextFormatted(
+      nextRow(
+        badgeLink(
+          NEXT_AUDIT_BADGE,
+          `${AMBER("⚠")} ${AMBER(`${vuln[1]} vulnerabilities`)} ${DIM("·")} ${DIM(vuln[2])} ${DIM("·")} ${UNDERLINE("npm audit")}`,
+        ),
+      ),
+    );
+  }
+
+  if (/^npm warn/i.test(plain)) {
+    const clipped = plain.length > 92 ? `${plain.slice(0, 89)}…` : plain;
+    return flattenNextFormatted(
+      nextRow(`${AMBER("⚠")} ${AMBER(clipped.replace(/^npm warn[:\s]*/i, ""))}`),
+    );
+  }
+
+  return null;
+}
+
+function formatNextTsconfigNoise(plain) {
+  if (!isNextTsconfigNoise(plain)) {
+    return null;
+  }
+  if (!rememberNextBootKey("tsconfig:reconfigured")) {
+    return [];
+  }
+  return flattenNextFormatted(
+    nextRow(
+      badgeLink(
+        NEXT_TS_BADGE,
+        `${DIM("ℹ")} ${WHITE("Next.js updated tsconfig.json")} ${DIM("·")} ${DIM("strict off by default")}`,
+      ),
+    ),
+  );
 }
 
 function formatNextPlainLine(plain) {
@@ -1545,8 +1908,75 @@ const nextErrorBuffer = [];
 const convexErrorBuffer = [];
 /** @type {string[]} */
 const nextBrowserBuffer = [];
-/** @type {"hydration" | "lcp" | null} */
+/** @type {"hydration" | "lcp" | "rsc" | null} */
 let nextBrowserMode = null;
+/** @type {ReturnType<typeof setTimeout> | null} */
+let nextBrowserFlushTimer = null;
+/** @type {string | null} */
+let nextBrowserFlushPrefix = null;
+let lastHydrationSummaryKey = null;
+let lastHydrationSummaryAt = 0;
+let lastRscSummaryKey = null;
+let lastRscSummaryAt = 0;
+const HYDRATION_SUMMARY_COOLDOWN_MS = 30000;
+const RSC_SUMMARY_COOLDOWN_MS = 30000;
+const BROWSER_FLUSH_MS = 400;
+
+function shouldEmitHydrationSummary(buffer) {
+  const key = hydrationSummaryKey(buffer);
+  const now = Date.now();
+  if (
+    key === lastHydrationSummaryKey &&
+    now - lastHydrationSummaryAt < HYDRATION_SUMMARY_COOLDOWN_MS
+  ) {
+    return false;
+  }
+  lastHydrationSummaryKey = key;
+  lastHydrationSummaryAt = now;
+  return true;
+}
+
+function shouldEmitRscSummary(buffer) {
+  const key = rscPayloadSummaryKey(buffer);
+  const now = Date.now();
+  if (
+    key === lastRscSummaryKey &&
+    now - lastRscSummaryAt < RSC_SUMMARY_COOLDOWN_MS
+  ) {
+    return false;
+  }
+  lastRscSummaryKey = key;
+  lastRscSummaryAt = now;
+  return true;
+}
+
+function cancelBrowserFlushTimer() {
+  if (nextBrowserFlushTimer) {
+    clearTimeout(nextBrowserFlushTimer);
+    nextBrowserFlushTimer = null;
+  }
+  nextBrowserFlushPrefix = null;
+}
+
+function scheduleBrowserFlush(prefix) {
+  nextBrowserFlushPrefix = prefix;
+  if (nextBrowserFlushTimer) {
+    clearTimeout(nextBrowserFlushTimer);
+  }
+  nextBrowserFlushTimer = setTimeout(() => {
+    nextBrowserFlushTimer = null;
+    flushNextBrowserBuffer(nextBrowserFlushPrefix ?? tagFor("next"));
+    nextBrowserFlushPrefix = null;
+  }, BROWSER_FLUSH_MS);
+}
+
+function cancelHydrationFlushTimer() {
+  cancelBrowserFlushTimer();
+}
+
+function scheduleHydrationFlush(prefix) {
+  scheduleBrowserFlush(prefix);
+}
 /** @type {{ sourceName: string; prefix: string; formatted: string | string[] | null }[]} */
 const deferredEmits = [];
 /** Cloud/dashboard URLs — emitted together after Development (cloud first). */
@@ -1574,7 +2004,21 @@ function isConvexErrorPart(part) {
 }
 
 function flushNextBrowserBuffer(prefix = tagFor("next")) {
+  cancelHydrationFlushTimer();
+
   if (!nextBrowserBuffer.length) {
+    nextBrowserMode = null;
+    return;
+  }
+
+  if (nextBrowserMode === "hydration" && !shouldEmitHydrationSummary(nextBrowserBuffer)) {
+    nextBrowserBuffer.length = 0;
+    nextBrowserMode = null;
+    return;
+  }
+
+  if (nextBrowserMode === "rsc" && !shouldEmitRscSummary(nextBrowserBuffer)) {
+    nextBrowserBuffer.length = 0;
     nextBrowserMode = null;
     return;
   }
@@ -1584,9 +2028,11 @@ function flushNextBrowserBuffer(prefix = tagFor("next")) {
       ? flattenNextFormatted(formatHydrationMismatchSummary(nextBrowserBuffer))
       : nextBrowserMode === "lcp"
         ? flattenNextFormatted(formatLcpWarningRows(nextBrowserBuffer))
-        : flattenNextFormatted(
-            formatNextBrowserMiscRows(nextBrowserBuffer.join(" ")),
-          );
+        : nextBrowserMode === "rsc"
+          ? flattenNextFormatted(formatRscPayloadSummary(nextBrowserBuffer))
+          : flattenNextFormatted(
+              formatNextBrowserMiscRows(nextBrowserBuffer.join(" ")),
+            );
 
   nextBrowserBuffer.length = 0;
   nextBrowserMode = null;
@@ -1720,8 +2166,17 @@ function beginShutdown(code = 0, { announce = false } = {}) {
   convexBootInfoOpen = false;
   emittedConvexBootKeys.clear();
   emittedNextBootKeys.clear();
+  cancelBrowserFlushTimer();
+  lastCssErrorEmitKey = null;
+  lastCssErrorEmitAt = 0;
+  lastHydrationSummaryKey = null;
+  lastHydrationSummaryAt = 0;
+  lastRscSummaryKey = null;
+  lastRscSummaryAt = 0;
   flushNextErrorBuffer();
   flushNextBrowserBuffer();
+  flushCssErrorPartBuffer();
+  flushCssErrorBurst();
   flushConvexErrorBuffer();
   flushNextRequestBurst();
   flushDeferredEmits();
@@ -1828,6 +2283,28 @@ function formatNextLine(line) {
     return null;
   }
 
+  if (isRawHydrationNoise(plain)) {
+    return null;
+  }
+
+  if (/^TypeError:\s*network error$/i.test(plain)) {
+    return [];
+  }
+
+  if (isCssBuildErrorLine(plain)) {
+    return [];
+  }
+
+  const npmFormatted = formatNextNpmNoise(plain);
+  if (npmFormatted !== null) {
+    return npmFormatted;
+  }
+
+  const tsconfigFormatted = formatNextTsconfigNoise(plain);
+  if (tsconfigFormatted !== null) {
+    return tsconfigFormatted;
+  }
+
   for (const [pattern, format] of NEXT_LINE_FORMATTERS) {
     const match = plain.match(pattern);
     if (match) {
@@ -1902,11 +2379,24 @@ function emitPart(part, prefix, formatLine, sourceName) {
         nextBrowserMode = "hydration";
       }
       nextBrowserBuffer.push(plain);
+      scheduleHydrationFlush(prefix);
       return;
     }
 
-    if (nextBrowserMode === "hydration") {
+    if (isRscPayloadErrorLine(plain)) {
+      if (nextBrowserMode !== "rsc") {
+        flushNextBrowserBuffer(prefix);
+        nextBrowserMode = "rsc";
+      }
+      nextBrowserBuffer.push(plain);
+      scheduleBrowserFlush(prefix);
+      return;
+    }
+
+    if (isCssBuildErrorLine(plain)) {
       flushNextBrowserBuffer(prefix);
+      scheduleCssErrorPart(prefix, plain);
+      return;
     }
 
     if (isNextBrowserMisc(plain)) {
@@ -2177,6 +2667,98 @@ const DEMO_SCENARIOS = {
       { source: "convex", line: "✔ 3:46:03 PM Code pushed! (1.21s)" },
     ],
   },
+  tooling: {
+    label: "npm install + audit + tsconfig noise (compact)",
+    events: [
+      { source: "next", line: "added 4 packages, and audited 488 packages in 4s" },
+      { source: "next", line: "186 packages are looking for funding" },
+      { source: "next", line: "run `npm fund` for details" },
+      { source: "next", line: "4 vulnerabilities (2 moderate, 2 high)" },
+      {
+        source: "next",
+        line: "To address all issues (including breaking changes), run:",
+      },
+      { source: "next", line: "npm audit fix --force" },
+      { source: "next", line: "Run `npm audit` for details." },
+      {
+        source: "next",
+        line:
+          "We detected TypeScript in your project and reconfigured your tsconfig.json file for you. Strict-mode is set to false by default.",
+      },
+      {
+        source: "next",
+        line:
+          "The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:",
+      },
+      {
+        source: "next",
+        line: "The following mandatory changes were made to your tsconfig.json:",
+      },
+      { source: "next", line: "▲ Next.js 16.2.9" },
+      { source: "next", line: "- Local:        http://localhost:3000" },
+      { source: "next", line: "✓ Ready in 1847ms" },
+    ],
+  },
+  nav: {
+    label: "Hash nav RSC fetch noise (deduped)",
+    events: [
+      {
+        source: "next",
+        line:
+          "[browser] Failed to fetch RSC payload for http://localhost:3000/#cocktails. Falling back to browser navigation.",
+      },
+      { source: "next", line: "TypeError: network error" },
+      {
+        source: "next",
+        line:
+          "[browser] Failed to fetch RSC payload for http://localhost:3000/#cocktails. Falling back to browser navigation.",
+      },
+      { source: "next", line: "TypeError: network error" },
+      {
+        source: "next",
+        line:
+          "[browser] Failed to fetch RSC payload for http://localhost:3000/#about. Falling back to browser navigation.",
+      },
+      { source: "next", line: "TypeError: network error" },
+    ],
+  },
+  css: {
+    label: "Tailwind CSS build errors (collapsed ×N)",
+    events: [
+      { source: "next", line: "[browser] ./app/globals.css" },
+      { source: "next", line: "[browser] Error evaluating Node.js code" },
+      {
+        source: "next",
+        line:
+          "[browser] CssSyntaxError: tailwindcss: D:\\Code\\gsap_cocktails-main\\app\\globals.css:1:1: Cannot apply unknown utility class `group`",
+      },
+      { source: "next", line: "[browser] Import trace:" },
+      { source: "next", line: "[browser] Client Component Browser:" },
+      { source: "next", line: "[browser] ./app/globals.css" },
+      { source: "next", line: "[browser] ./app/layout.jsx" },
+      { source: "next", line: "[browser] ./app/globals.css" },
+      { source: "next", line: "[browser] Error evaluating Node.js code" },
+      {
+        source: "next",
+        line:
+          "[browser] CssSyntaxError: tailwindcss: D:\\Code\\gsap_cocktails-main\\app\\globals.css:1:1: Cannot apply unknown utility class `group`",
+      },
+      { source: "next", line: "[browser] ./app/globals.css" },
+      { source: "next", line: "[browser] Error evaluating Node.js code" },
+      {
+        source: "next",
+        line:
+          "[browser] CssSyntaxError: tailwindcss: D:\\Code\\gsap_cocktails-main\\app\\globals.css:1:1: Cannot apply unknown utility class `group`",
+      },
+      { source: "next", line: "[browser] ./app/globals.css" },
+      { source: "next", line: "[browser] Error evaluating Node.js code" },
+      {
+        source: "next",
+        line:
+          "[browser] CssSyntaxError: tailwindcss: D:\\Code\\gsap_cocktails-main\\app\\globals.css:1:1: Cannot apply unknown utility class `group`",
+      },
+    ],
+  },
   setup: {
     label: "Convex first-run wizard (clean output)",
     events: [
@@ -2286,10 +2868,21 @@ const DEMO_SCENARIOS = {
   },
 };
 
-const DEMO_SCENARIO_ORDER = ["startup", "requests", "changes", "errors"];
+const DEMO_SCENARIO_ORDER = [
+  "startup",
+  "tooling",
+  "nav",
+  "css",
+  "requests",
+  "changes",
+  "errors",
+];
 
 const DEMO_SCENARIO_TONES = {
   startup: STARTUP,
+  tooling: STARTUP,
+  nav: REQUESTS,
+  css: RED,
   requests: REQUESTS,
   changes: GREEN,
   errors: RED,
@@ -2378,6 +2971,15 @@ async function runDemoScenario(name, { fast }) {
   convexBootInfoOpen = false;
   emittedConvexBootKeys.clear();
   emittedNextBootKeys.clear();
+  cancelBrowserFlushTimer();
+  flushCssErrorPartBuffer();
+  flushCssErrorBurst();
+  lastCssErrorEmitKey = null;
+  lastCssErrorEmitAt = 0;
+  lastHydrationSummaryKey = null;
+  lastHydrationSummaryAt = 0;
+  lastRscSummaryKey = null;
+  lastRscSummaryAt = 0;
   process.stdout.write(formatDemoScenarioHeader(name, scenario.label));
   lastLogSource = "demo";
 
@@ -2389,6 +2991,8 @@ async function runDemoScenario(name, { fast }) {
   }
 
   flushNextBrowserBuffer();
+  flushCssErrorPartBuffer();
+  flushCssErrorBurst();
   flushNextRequestBurst();
   flushNextErrorBuffer();
   flushConvexErrorBuffer();
@@ -2462,8 +3066,11 @@ async function main() {
   }
 
   printDevSessionHeader();
+  const nextDevCommand = process.env.DEV_HTTPS === "1"
+    ? "npx next dev --experimental-https -H 0.0.0.0"
+    : "npx next dev -H 0.0.0.0";
   spawnDev("convex", "npx convex dev", formatConvexLine);
-  spawnDev("next", "npx next dev", formatNextLine);
+  spawnDev("next", nextDevCommand, formatNextLine);
 }
 
 main();

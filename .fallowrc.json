@@ -1,0 +1,27 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  "entry": [
+    "app/**/{page,layout,loading,error,not-found,default,template,route}.{js,jsx,ts,tsx}"
+  ],
+  "ignorePatterns": [
+    ".agents/**",
+    ".claude/**",
+    "convex/_generated/**",
+    "scripts/dev.mjs",
+    "patches/**",
+    "assets/**",
+    "skills-lock.json"
+  ],
+  "ignoreUnresolvedImports": ["./dataModel.js"],
+  "duplicates": {
+    "minOccurrences": 3,
+    "ignoreImports": true
+  },
+  "rules": {
+    "unused-files": "error",
+    "unused-exports": "error",
+    "unresolved-imports": "error",
+    "unused-dependencies": "warn",
+    "circular-dependencies": "error"
+  }
+}
