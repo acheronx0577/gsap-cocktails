@@ -3,7 +3,7 @@
   <img src="public/readme/hero.png" alt="Project Banner">
   <br />
   <h3>GSAP Cocktail Website</h3>
-  <p>A scroll-driven cocktail landing page built with React, GSAP, and Tailwind CSS.</p>
+  <p>A scroll-driven cocktail landing page built with Next.js, GSAP, and Tailwind CSS.</p>
 </div>
 
 ---
@@ -11,9 +11,9 @@
 ## Tech Stack
 
 - **[GSAP](https://gsap.com/)** — Scroll-driven animations with SplitText, ScrollTrigger, parallax, pinned sections, and timeline control.
+- **[Next.js](https://nextjs.org/)** — React framework with App Router and optimized production builds.
 - **[React](https://react.dev/)** — Component-based UI with modular sections and reusable scroll behavior.
 - **[Tailwind CSS](https://tailwindcss.com/)** — Utility-first styling for a responsive layout.
-- **[Vite](https://vitejs.dev/)** — Fast dev server and production builds.
 
 ## Features
 
@@ -38,11 +38,11 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173) in your browser.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 **Other commands:**
 
 ```bash
 npm run build   # production build
-npm run preview # preview production build locally
+npm run start   # run production server locally
 ```
