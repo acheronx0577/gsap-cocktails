@@ -14,8 +14,8 @@ const Art = () => {
         scrollTrigger: {
           trigger: "#art",
           start,
-          end: "bottom center",
-          scrub: 1.5,
+          end: "+=130%",
+          scrub: 2,
           pin: true,
         },
       });
@@ -27,7 +27,7 @@ const Art = () => {
           maskPosition: "center",
           maskSize: "400%",
           duration: 1,
-          ease: "power1.inOut ",
+          ease: "power1.inOut",
         })
         .to("#masked-content", { opacity: 1, duration: 1, ease: "power1.inOut" });
     };
