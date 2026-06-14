@@ -645,7 +645,7 @@ function formatNextErrorBlock(buffer) {
 }
 
 function nextWarningDetailRow(text) {
-  return `${NEXT_BAR}    ${text}`;
+  return nextRow(branchLink(text));
 }
 
 function formatReadMoreTail(text) {
