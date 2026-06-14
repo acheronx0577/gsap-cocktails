@@ -128,16 +128,17 @@ const Menu = () => {
 
       mm.add(
         {
-          mobile:
-            "(max-width: 767px) and (prefers-reduced-motion: no-preference)",
           desktop:
-            "(min-width: 768px) and (prefers-reduced-motion: no-preference)",
+            "(min-width: 1024px) and (prefers-reduced-motion: no-preference)",
         },
-        (context) => {
-          const { mobile } = context.conditions;
-          createMenuScroll(mobile ? "top 12%" : "top top");
+        () => {
+          createMenuScroll("top top");
         }
       );
+
+      mm.add("(max-width: 1023px)", () => {
+        updateSlideVisuals(displayIndexRef.current);
+      });
 
       mm.add("(prefers-reduced-motion: reduce)", () => {
         updateSlideVisuals(displayIndexRef.current);
