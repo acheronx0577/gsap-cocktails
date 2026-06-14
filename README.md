@@ -9,18 +9,21 @@
     <img src="MockUp/animated_450p.gif" alt="Velvet Pour scroll animations preview">
   </a>
   <br />
-  <h3>GSAP Cocktail Website</h3>
-  <p>A scroll-driven cocktail landing page built with Next.js, GSAP, and Tailwind CSS.</p>
+  <h3>Velvet Pour</h3>
+  <p>A scroll-driven cocktail landing page built with Next.js, GSAP, Lenis, and Tailwind CSS.</p>
 </div>
 
 ---
 
 ## Tech Stack
 
-- **[GSAP](https://gsap.com/)** — Scroll-driven animations with SplitText, ScrollTrigger, parallax, pinned sections, and timeline control.
-- **[Next.js](https://nextjs.org/)** — React framework with App Router and optimized production builds.
-- **[React](https://react.dev/)** — Component-based UI with modular sections and reusable scroll behavior.
-- **[Tailwind CSS](https://tailwindcss.com/)** — Utility-first styling for a responsive layout.
+- **[Next.js 16](https://nextjs.org/)** — App Router, server routes, and production builds on Vercel.
+- **[React 19](https://react.dev/)** — Component-based UI with modular sections and client-side scroll behavior.
+- **[GSAP](https://gsap.com/)** — Scroll-driven animation with SplitText, ScrollTrigger, parallax, pinned sections, and timelines via `@gsap/react`.
+- **[Lenis](https://lenis.darkroom.engineering/)** — Smooth scrolling integrated with ScrollTrigger-driven sections.
+- **[Tailwind CSS 4](https://tailwindcss.com/)** — Utility-first styling with responsive `clamp()` layout.
+- **[Convex](https://www.convex.dev/)** — Backend for contact form ingress, rate limiting, and submission storage.
+- **[Resend](https://resend.com/)** — Transactional email delivery for contact form messages.
 
 ## Features
 
@@ -32,7 +35,8 @@
 - **Image Masking Effects** — Scroll-triggered pins and masks for image transitions.
 - **Custom Carousel** — Animated slides with custom navigation.
 - **Seamless Timeline Animations** — Smooth timelines across multiple sections.
-- **Responsive Design** — Fluid UI across screen sizes.
+- **Contact Form** — Convex + Resend pipeline with rate limiting and live cooldown UI.
+- **Responsive Design** — Fluid UI across mobile, laptop, and desktop.
 
 ## How to Run
 
