@@ -189,6 +189,192 @@ function stripAnsi(text) {
   return text.replace(ANSI_RE, "");
 }
 
+const CONVEX_NAV_HINT_RE = /↑↓ navigate • ⏎ select/g;
+
+function collapseCarriageReturns(text) {
+  return text
+    .split("\n")
+    .map((line) => {
+      const idx = line.lastIndexOf("\r");
+      return idx === -1 ? line : line.slice(idx + 1);
+    })
+    .join("\n");
+}
+
+function stripConvexLead(text) {
+  return stripAnsi(text).replace(/^▌\s*/, "").trim();
+}
+
+function normalizeConvexPlain(plain) {
+  return stripConvexLead(plain)
+    .replace(CONVEX_NAV_HINT_RE, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function parseConvexCompletedPrompt(plain) {
+  const text = normalizeConvexPlain(plain);
+  if (!/✔/.test(text)) {
+    return null;
+  }
+
+  const body = text.slice(text.indexOf("✔") + 1).trim();
+
+  if (/\bcloud deployment\b/i.test(body)) {
+    return { label: "Deployment", value: "cloud" };
+  }
+  if (/\blocal deployment\b/i.test(body)) {
+    return { label: "Deployment", value: "local (beta)" };
+  }
+  if (/Set up Convex AI files/i.test(body)) {
+    return {
+      label: "Convex AI files",
+      value: /\bYes\b/i.test(body) ? "enabled" : "skipped",
+    };
+  }
+  if (/^Created project /i.test(body)) {
+    return null;
+  }
+  if (/^Provisioned a dev deployment/i.test(body)) {
+    return null;
+  }
+  if (/Skills installed/i.test(body)) {
+    return null;
+  }
+  if (/\swritten$/i.test(body)) {
+    return null;
+  }
+  if (/Convex functions ready/i.test(body)) {
+    return null;
+  }
+  if (/Finished bundling|Code pushed/i.test(body)) {
+    return null;
+  }
+
+  if (/\?/.test(body)) {
+    const questionMatch = body.match(/^(.+?\?)\s*(.+)$/);
+    if (questionMatch) {
+      let label = questionMatch[1].replace(/\?+$/, "").trim();
+      if (label.length > 42) {
+        label = label.split("?")[0].trim();
+      }
+      return { label, value: questionMatch[2].trim() };
+    }
+  }
+
+  const colonMatch = body.match(/^([^:?]+?):\s*(.+)$/);
+  if (
+    colonMatch &&
+    !/^\d{1,2}:\d{2}/.test(colonMatch[1]) &&
+    !/^\d{1,2}:\d{2}/.test(body)
+  ) {
+    return { label: colonMatch[1].trim(), value: colonMatch[2].trim() };
+  }
+
+  return null;
+}
+
+function formatConvexSetupAnswer(plain) {
+  const parsed = parseConvexCompletedPrompt(plain);
+  if (!parsed) {
+    return null;
+  }
+
+  const label =
+    parsed.label.length > 34 ? `${parsed.label.slice(0, 31)}…` : parsed.label;
+
+  return convexRow(
+    `${GREEN("✔")} ${DIM(label)} ${DIM("→")} ${WHITE(parsed.value)}`,
+    { success: true },
+  );
+}
+
+function shouldSuppressConvexLine(plain) {
+  const text = normalizeConvexPlain(plain);
+  if (!text) {
+    return true;
+  }
+  if (/^❯/.test(text)) {
+    return true;
+  }
+  if (
+    /^(create a new project|choose an existing project|cloud deployment|local deployment)/i.test(
+      text,
+    )
+  ) {
+    return true;
+  }
+  if (/^\?/.test(text) && !/✔/.test(text)) {
+    return true;
+  }
+  if (/^Creating \.+$/i.test(text)) {
+    return true;
+  }
+  if (/^Installing Convex agent skills/i.test(text)) {
+    return true;
+  }
+  if (
+    /^(Write your Convex functions|Give us feedback|View the Convex dashboard at)/i.test(
+      text,
+    )
+  ) {
+    return true;
+  }
+  if (
+    /^(client URL as|HTTP actions URL as|name as CONVEX_DEPLOYMENT|to \.env\.local)/i.test(
+      text,
+    )
+  ) {
+    return true;
+  }
+  if (/^If you're running into errors with other tools watching/i.test(text)) {
+    return true;
+  }
+  if (/^override the temporary directory|^Be sure to pick a temporary directory|^location with the CONVEX_TMPDIR/i.test(text)) {
+    return true;
+  }
+  return false;
+}
+
+function formatConvexFilesystemWarning(plain) {
+  if (!/Temporary directory .* different filesystems/i.test(normalizeConvexPlain(plain))) {
+    return null;
+  }
+
+  return convexRow(
+    `${AMBER("!")} ${DIM("Convex temp dir is on another drive — set CONVEX_TMPDIR if file watchers fail")}`,
+  );
+}
+
+function formatConvexDeploymentModern(team, slug) {
+  convexDevRowEmitted = true;
+  flushConvexBootLinksAfterEmit = true;
+
+  return [
+    convexRow(
+      `${DEV_BADGE}  ${DIM(`${team}:`)}${BOLD(slug)}${DIM(" (dev)")}`,
+    ),
+  ];
+}
+
+function formatConvexDeploymentShort(project, ref, dashUrl) {
+  if (dashUrl) {
+    pendingConvexDashboardUrl = dashUrl;
+  }
+  convexDevRowEmitted = true;
+  flushConvexBootLinksAfterEmit = true;
+
+  return [
+    convexRow(
+      `${DEV_BADGE}  ${DIM(`${project}:`)}${BOLD(ref)}${DIM(" (dev)")}`,
+    ),
+  ];
+}
+
+function formatConvexSimpleLink(label, url) {
+  return convexRow(arrowLink(label, UNDERLINE(url)));
+}
+
 function labelCell(label) {
   const pad = Math.max(1, LABEL_WIDTH - label.length);
   return `${DIM(label)}${" ".repeat(pad)}`;
@@ -717,8 +903,12 @@ function devTermWidth() {
 
 function wrapDevBody(line, bar, sourceName) {
   const plain = stripAnsi(line);
+  if (/https?:\/\//.test(plain)) {
+    return [line];
+  }
+
   const maxPlain = Math.max(
-    36,
+    48,
     devTermWidth() - stripAnsi(tagFor(sourceName)).length - 2,
   );
 
@@ -749,6 +939,12 @@ function wrapDevBody(line, bar, sourceName) {
   };
 
   for (const word of words) {
+    if (/^https?:\/\//i.test(word)) {
+      pushChunk();
+      rows.push(`${rowPrefix}${word}`);
+      continue;
+    }
+
     if (word.length > budget) {
       pushChunk();
       for (let i = 0; i < word.length; i += budget) {
@@ -787,7 +983,7 @@ function formatConvexDeployment(team, project, ref, dashUrl) {
 
   return [
     convexRow(
-      `${DEV_BADGE}  ${DIM(`${team}:${project}:`)}${BOLD(ref)}${DIM(" (dev)")}`,
+      `${DEV_BADGE}  ${DIM(`${team}/${project}:`)}${BOLD(ref)}${DIM(" (dev)")}`,
     ),
   ];
 }
@@ -800,18 +996,14 @@ function emitConvexBootLinks(prefix = tagFor("convex"), { force = false } = {}) 
   const rows = [];
 
   if (pendingConvexCloudUrl) {
-    rows.push(
-      convexRow(labeledLink("cloud", UNDERLINE(pendingConvexCloudUrl))),
-    );
+    rows.push(formatConvexSimpleLink("cloud", pendingConvexCloudUrl));
     pendingConvexCloudUrl = null;
   } else if (pendingConvexDashboardUrl && !force) {
     return;
   }
 
   if (pendingConvexDashboardUrl) {
-    rows.push(
-      convexRow(labeledLink("dashboard", UNDERLINE(pendingConvexDashboardUrl))),
-    );
+    rows.push(formatConvexSimpleLink("dashboard", pendingConvexDashboardUrl));
     pendingConvexDashboardUrl = null;
   }
 
@@ -1053,14 +1245,33 @@ const NEXT_LINE_FORMATTERS = [
 
 const CONVEX_LINE_FORMATTERS = [
   [
-    /^▌ Developing against deployment:$/,
+    /^Convex\s*$/,
     () => {
       convexBootInfoOpen = true;
       return convexHead(convexHeadBadge());
     },
   ],
   [
-    /^▌\s+└─\s+(\S+)/,
+    /^Developing against deployment:$/,
+    () => {
+      convexBootInfoOpen = true;
+      return convexHead(convexHeadBadge());
+    },
+  ],
+  [
+    /^Development\s+([\w-]+):([\S]+)\s+\(dev\)/,
+    ([, team, slug]) => formatConvexDeploymentModern(team, slug),
+  ],
+  [
+    /^└→\s+cloud\s+(\S+)/,
+    ([, url]) => formatConvexSimpleLink("cloud", url),
+  ],
+  [
+    /^└→\s+dashboard\s+(\S+)/,
+    ([, url]) => formatConvexSimpleLink("dashboard", url),
+  ],
+  [
+    /^└─\s+(\S+)/,
     ([, url]) => {
       pendingConvexCloudUrl = url;
       emitConvexBootLinks();
@@ -1068,22 +1279,53 @@ const CONVEX_LINE_FORMATTERS = [
     },
   ],
   [
-    /^▌\s+(?:\[Development\]|Development)\s+([\w-]+):([\w-]+):(\S+)\s+\(dev\)\s+\(dashboard:\s*(\S+)\)/,
+    /^\[Development\]\s+([\w-]+):(\S+)\s+\(dev\)\s+\(dashboard:\s*(\S+)\)/,
+    ([, project, ref, dashUrl]) =>
+      formatConvexDeploymentShort(project, ref, dashUrl),
+  ],
+  [
+    /^(?:\[Development\]|Development)\s+([\w-]+):([\w-]+):(\S+)\s+\(dev\)\s+\(dashboard:\s*(\S+)\)/,
     ([, team, project, ref, dashUrl]) =>
       formatConvexDeployment(team, project, ref, dashUrl),
   ],
   [
-    /^▌\s+(?:\[Development\]|Development)\s+([\w-]+):([\w-]+):(\S+)\s+\(dev\)\s+\(dashboard\)/,
+    /^(?:\[Development\]|Development)\s+([\w-]+):([\w-]+):(\S+)\s+\(dev\)\s+\(dashboard\)/,
     ([, team, project, ref]) =>
       formatConvexDeployment(team, project, ref, null),
   ],
   [
-    /^-\s+(.+\.\.\.)$/,
-    ([, body]) => convexWaitingRow(body),
+    /^✔\s+Created project (.+?), manage it at (\S+)/,
+    ([, name, url]) => [
+      convexRow(
+        `${GREEN("✔")} ${DIM("project")} ${DIM("→")} ${WHITE(name)}`,
+        { success: true },
+      ),
+      formatConvexSimpleLink("manage", url),
+    ],
   ],
   [
-    /^✔\s+(.+)$/,
-    ([, body]) => convexSuccessRow(body),
+    /^✔\s+Provisioned a dev deployment/i,
+    () =>
+      convexRow(
+        `${GREEN("✔")} ${DIM("deployment")} ${DIM("→")} ${WHITE("provisioned")} ${DIM("(.env.local)")}`,
+        { success: true },
+      ),
+  ],
+  [
+    /^✔\s+Skills installed$/i,
+    () =>
+      convexRow(
+        `${GREEN("✔")} ${DIM("agent skills")} ${DIM("→")} ${WHITE("installed")}`,
+        { success: true },
+      ),
+  ],
+  [
+    /^✔\s+(.+)\s+written$/i,
+    ([, target]) =>
+      convexRow(
+        `${GREEN("✔")} ${DIM("write")} ${DIM("→")} ${WHITE(target.split(/[/\\]/).pop() ?? target)}`,
+        { success: true },
+      ),
   ],
 ];
 
@@ -1234,17 +1476,13 @@ function printDevSessionHeader() {
   const rule = devSessionRule();
   process.stdout.write(`${rule}\n`);
   process.stdout.write(
-    `${BOLD("dev")}  ${tagFor("convex")} ${DIM("+")} ${tagFor("next")}  ${DIM("· Ctrl+C to stop")}`,
+    `${BOLD("dev")}  ${tagFor("convex")} ${DIM("+")} ${tagFor("next")}  ${DIM("· Ctrl+C stops both")}`,
   );
   if (requestLogMode !== "normal") {
     process.stdout.write(`  ${DIM(`· requests ${requestLogMode}`)}`);
-  } else {
-    process.stdout.write(
-      `  ${DIM("· fast GETs hidden")} ${DIM("(--requests=verbose)")}`,
-    );
   }
   process.stdout.write("\n");
-  process.stdout.write(`${rule}\n`);
+  process.stdout.write(`${rule}\n\n`);
 }
 
 function printShutdownBanner() {
@@ -1310,18 +1548,46 @@ function formatConvexLine(line) {
   }
 
   const plain = stripAnsi(text);
+
+  if (shouldSuppressConvexLine(plain)) {
+    return null;
+  }
+
+  const filesystemWarning = formatConvexFilesystemWarning(plain);
+  if (filesystemWarning) {
+    return flattenConvexFormatted(filesystemWarning);
+  }
+
+  const setupAnswer = formatConvexSetupAnswer(plain);
+  if (setupAnswer) {
+    return flattenConvexFormatted(setupAnswer, { success: true });
+  }
+
   for (const [pattern, format] of CONVEX_LINE_FORMATTERS) {
-    const match = plain.match(pattern);
+    const match = normalizeConvexPlain(plain).match(pattern);
     if (match) {
       return flattenConvexFormatted(format(match), barToneForPlain(plain));
     }
   }
 
-  if (plain.startsWith("▌")) {
-    return flattenConvexFormatted(convexRow(plain.slice(1).trimStart()));
+  const normalized = normalizeConvexPlain(plain);
+  const waitingMatch = normalized.match(/^-\s+(.+\.\.\.)$/);
+  if (waitingMatch) {
+    return flattenConvexFormatted(convexWaitingRow(waitingMatch[1]));
   }
 
-  return flattenConvexFormatted(convexRow(plain));
+  const successMatch = normalized.match(/^✔\s+(.+)$/);
+  if (successMatch) {
+    return flattenConvexFormatted(convexSuccessRow(successMatch[1]), {
+      success: true,
+    });
+  }
+
+  if (normalized) {
+    return flattenConvexFormatted(convexRow(normalized));
+  }
+
+  return null;
 }
 
 function formatNextLine(line) {
@@ -1470,6 +1736,7 @@ function emitPart(part, prefix, formatLine, sourceName) {
 
 function processChunk(chunk, state, prefix, formatLine, sourceName) {
   state.buffer += chunk.toString();
+  state.buffer = collapseCarriageReturns(state.buffer);
   const parts = state.buffer.split(/\r?\n/);
   state.buffer = parts.pop() ?? "";
   for (const part of parts) {
@@ -1665,6 +1932,62 @@ const DEMO_SCENARIOS = {
       { source: "convex", line: "✔ 3:46:01 PM Finished bundling! (456ms)" },
       { source: "convex", line: "- Pushing code to deployment..." },
       { source: "convex", line: "✔ 3:46:03 PM Code pushed! (1.21s)" },
+    ],
+  },
+  setup: {
+    label: "Convex first-run wizard (clean output)",
+    events: [
+      { source: "convex", line: "▌  ? What would you like to configure?" },
+      { source: "convex", line: "▌  ❯ create a new project" },
+      {
+        source: "convex",
+        line:
+          "▌  ↑↓ navigate • ⏎ select✔ What would you like to configure? create a new project",
+      },
+      {
+        source: "convex",
+        line: "▌  ✔ Project name: gsap-cocktails-main",
+      },
+      {
+        source: "convex",
+        line:
+          "▌  ↑↓ navigate • ⏎ select✔ Use cloud or local dev deployment? For more see https://docs.convex.dev/cli/local-deployments cloud deployment",
+      },
+      {
+        source: "convex",
+        line:
+          "▌  ✔ Created project gsap-cocktails-main, manage it at https://dashboard.convex.dev/t/acheronx/gsap-cocktails-main",
+      },
+      {
+        source: "convex",
+        line:
+          "▌ Temporary directory 'C:\\Temp' and project directory 'convex' are on different filesystems.",
+      },
+      {
+        source: "convex",
+        line:
+          "▌  ✔ Set up Convex AI files? (guidelines, AGENTS.md, agent skills) Yes",
+      },
+      {
+        source: "convex",
+        line: "▌  ✔ guidelines.md written",
+      },
+      { source: "convex", line: "▌  ✔ Skills installed" },
+      { source: "convex", line: "▌  ✔ Provisioned a dev deployment and saved its:" },
+      { source: "convex", line: "▌  Convex " },
+      {
+        source: "convex",
+        line: "▌   Development   acheronx:gsap-cocktails-main:dev/acheronx (dev)",
+      },
+      {
+        source: "convex",
+        line: "▌  └→  cloud   https://acoustic-chihuahua-189.convex.cloud",
+      },
+      {
+        source: "convex",
+        line:
+          "▌  └→  dashboard   https://dashboard.convex.dev/t/acheronx/gsap-cocktails-main/acoustic-chihuahua-189",
+      },
     ],
   },
   errors: {

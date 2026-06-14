@@ -8,6 +8,7 @@
     "dev:demo:requests": "node scripts/dev.mjs --demo --scenario=requests",
     "dev:demo:changes": "node scripts/dev.mjs --demo --scenario=changes",
     "dev:demo:errors": "node scripts/dev.mjs --demo --scenario=errors",
+    "dev:demo:setup": "node scripts/dev.mjs --demo --scenario=setup",
     "dev:next": "next dev",
     "convex:dev": "convex dev",
     "convex:once": "convex dev --once",
