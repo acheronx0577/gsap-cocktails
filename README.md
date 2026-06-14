@@ -1,12 +1,12 @@
 <div align="center">
   <br />
-  <a href="https://velvet-pour-five-self.vercel.app/">
-    <img src="MockUp/797_1x_shots_so.png" alt="Velvet Pour — GSAP Cocktail Website" width="560">
+  <a href="https://velvet-pour-five-self.vercel.app/" target="_blank" rel="noopener noreferrer">
+    <img src="MockUp/797_1x_shots_so.png" alt="Velvet Pour — GSAP Cocktail Website" style="width: 100%; max-width: 720px; height: 280px; object-fit: cover; object-position: center top;">
   </a>
   <br />
   <br />
-  <a href="https://velvet-pour-five-self.vercel.app/">
-    <img src="MockUp/animated_450p.gif" alt="Velvet Pour scroll animations preview" width="560">
+  <a href="https://velvet-pour-five-self.vercel.app/" target="_blank" rel="noopener noreferrer">
+    <img src="MockUp/animated_450p.gif" alt="Velvet Pour scroll animations preview">
   </a>
   <br />
   <h3>GSAP Cocktail Website</h3>
