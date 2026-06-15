@@ -179,6 +179,7 @@ const NEXT_AUDIT_BADGE = makeBadge([236, 214, 180], [120, 72, 28], "audit");
 const NEXT_TS_BADGE = makeBadge([214, 220, 236], [72, 82, 118], "tsconfig");
 const CONVEX_CLOUD_BADGE = convexLinkBadge("cloud");
 const CONVEX_DASHBOARD_BADGE = convexLinkBadge("dashboard");
+const CONVEX_LOCAL_BADGE = convexLinkBadge("local");
 
 const LINK_BADGES = {
   local: NEXT_LOCAL_BADGE,
@@ -484,6 +485,26 @@ function formatConvexDeploymentShort(project, ref, dashUrl) {
       `${DEV_BADGE}  ${DIM(`${project}:`)}${BOLD(ref)}${DIM(" (dev)")}`,
     ),
   ];
+}
+
+function formatConvexLocalDeployment(port, team, slug, dashUrl) {
+  if (!rememberConvexBootKey(`local:${team}:${slug}:${port}`)) {
+    return [];
+  }
+  convexDevRowEmitted = true;
+  flushConvexBootLinksAfterEmit = true;
+
+  const rows = [
+    convexRow(
+      `${CONVEX_LOCAL_BADGE}  ${DIM(`${team}:`)}${BOLD(slug)} ${DIM("·")} ${DIM("Port")} ${BOLD(port)}`,
+    ),
+  ];
+
+  if (dashUrl) {
+    rows.push(convexRow(labeledLink("dashboard", UNDERLINE(dashUrl))));
+  }
+
+  return rows;
 }
 
 function formatConvexSimpleLink(label, url) {
@@ -887,9 +908,12 @@ function formatHydrationMismatchSummary(buffer) {
   const full = buffer.join("\n");
   const cursorRef = /data-cursor-ref/.test(full);
   const nodeCount = (full.match(/<[A-Za-z][A-Za-z0-9]*/g) ?? []).length;
+  const lenisHint = /lenis|ReactLenis|SmoothScroll/i.test(full);
   const hint = cursorRef
     ? "Cursor preview data-cursor-ref — safe to ignore in Glass"
-    : "SSR/client HTML differ — check window, Date, or random values";
+    : lenisHint
+      ? "ReactLenis wrapper — SmoothScroll defers until after mount"
+      : "SSR/client HTML differ — check window, Date, or random values";
 
   const stackLine = buffer.find((line) =>
     /\bat \S+/.test(stripBrowserPrefix(line)),
@@ -1827,6 +1851,11 @@ const CONVEX_LINE_FORMATTERS = [
   [
     /^Development\s+([\w-]+):([\S]+)\s+\(dev\)/,
     ([, team, slug]) => formatConvexDeploymentModern(team, slug),
+  ],
+  [
+    /^\[Local\]\s+Port\s+(\d+)\s+•\s+in\s+([\w-]+):([\w-]+)\s+\(dashboard:\s*(\S+)\)/,
+    ([, port, team, slug, dashUrl]) =>
+      formatConvexLocalDeployment(port, team, slug, dashUrl),
   ],
   [
     /^└→\s+cloud\s+(\S+)/,

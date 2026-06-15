@@ -22,6 +22,10 @@ function getReducedMotionServerSnapshot() {
   return false;
 }
 
+const subscribeNoop = () => () => {};
+const getClientMountedSnapshot = () => true;
+const getServerMountedSnapshot = () => false;
+
 function LenisScrollTriggerSync() {
   const lenis = useLenis();
 
@@ -48,13 +52,18 @@ function LenisScrollTriggerSync() {
 }
 
 export default function SmoothScroll({ children }) {
+  const mounted = useSyncExternalStore(
+    subscribeNoop,
+    getClientMountedSnapshot,
+    getServerMountedSnapshot,
+  );
   const prefersReducedMotion = useSyncExternalStore(
     subscribeToReducedMotion,
     getReducedMotionSnapshot,
     getReducedMotionServerSnapshot
   );
 
-  if (prefersReducedMotion) {
+  if (!mounted || prefersReducedMotion) {
     return children;
   }
 
