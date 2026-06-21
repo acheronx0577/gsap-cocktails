@@ -57,7 +57,7 @@ Add your Convex and contact-form secrets to `.env.local` (see `.env.example`), t
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000) in your browser!
 
 **Other commands:**
 
